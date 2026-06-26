@@ -1,66 +1,169 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart } from 'lucide-react';
+import { Search, Filter, Star, ShoppingCart, SlidersHorizontal, X, ShieldCheck } from 'lucide-react';
+import { MACHINERY, CATEGORIES, addToCart } from '../data/machinery';
 
-const sampleProducts = [
-  { id: 1, name: "Poultry Feed Machine 5 HP", capacity: "100-150 KG/HR", price: 147500.00, image: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80&w=500" },
-  { id: 2, name: "Mixture Machine", capacity: "50 KG/HR", price: 59000.00, image: "https://images.unsplash.com/photo-1565514020179-026b92b2d796?auto=format&fit=crop&q=80&w=500" },
-  { id: 3, name: "Cyclone Grinder 3 HP", capacity: "Heavy Duty", price: 59000.00, image: "https://images.unsplash.com/photo-1581092580497-e0d23cbdf1dc?auto=format&fit=crop&q=80&w=500" },
-  { id: 4, name: "Industrial Oven", capacity: "50 Trays", price: 210000.00, image: "https://images.unsplash.com/photo-1611117765103-6e3e53ba2dbb?auto=format&fit=crop&q=80&w=500" },
-];
+const Toast = ({ msg, onClose }) => (
+  <div className="toast" onClick={onClose}>
+    <div className="w-8 h-8 bg-yellow-500/20 rounded-full flex items-center justify-center shrink-0">
+      <ShieldCheck className="w-4 h-4 text-yellow-400" />
+    </div>
+    <span>{msg}</span>
+  </div>
+);
 
 const ProductsPage = () => {
   const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('All');
+  const [sortBy, setSortBy] = useState('default');
+  const [toast, setToast] = useState('');
 
-  const handleAddToCart = (product) => {
-    const currentCart = JSON.parse(localStorage.getItem('rudra_cart') || '[]');
-    const existing = currentCart.find(item => item.id === product.id);
-    if(existing) {
-      existing.quantity += 1;
-    } else {
-      currentCart.push({ ...product, quantity: 1 });
-    }
-    localStorage.setItem('rudra_cart', JSON.stringify(currentCart));
-    alert(`${product.name} added to Quote Request.`);
+  const handleAddCart = (product, e) => {
+    e.stopPropagation();
+    if (!product.inStock) return;
+    addToCart(product);
+    setToast(`${product.name} added to quote!`);
+    setTimeout(() => setToast(''), 3000);
   };
 
+  let filtered = MACHINERY
+    .filter(m => category === 'All' || m.category === category)
+    .filter(m => m.name.toLowerCase().includes(search.toLowerCase()) || m.category.toLowerCase().includes(search.toLowerCase()));
+
+  if (sortBy === 'price-asc') filtered = [...filtered].sort((a, b) => a.price - b.price);
+  if (sortBy === 'price-desc') filtered = [...filtered].sort((a, b) => b.price - a.price);
+  if (sortBy === 'rating') filtered = [...filtered].sort((a, b) => b.rating - a.rating);
+
   return (
-    <div className="py-20 px-6 max-w-7xl mx-auto min-h-screen">
-      <div className="flex justify-between items-end mb-12">
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-4">Industrial <span className="text-brand-gold">Machinery</span></h1>
-          <p className="text-gray-400">High-performance MSME equipment. Add to cart to generate a custom quotation.</p>
-        </div>
-        <button 
-          onClick={() => navigate('/cart')}
-          className="btn-outline flex items-center"
-        >
-          <ShoppingCart className="mr-2 w-5 h-5" /> View Quote Cart
-        </button>
+    <div className="pt-28 min-h-screen max-w-7xl mx-auto px-6 pb-20">
+      {/* Page Header */}
+      <div className="mb-10">
+        <div className="badge-gold inline-block mb-4">MSME Machinery Catalog</div>
+        <h1 className="text-4xl font-black text-white mb-3">Industrial <span className="gold-text">Machinery</span></h1>
+        <p className="text-gray-400 max-w-2xl">High-performance, MSME-grade industrial equipment. Add to cart to generate your custom quotation instantly.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {sampleProducts.map(product => (
-          <div key={product.id} className="bg-brand-dark border border-brand-green rounded-xl overflow-hidden group hover:border-brand-gold transition duration-300 shadow-lg">
-            <div className="h-48 overflow-hidden">
-              <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition duration-500 opacity-80 group-hover:opacity-100" />
-            </div>
-            <div className="p-6">
-              <h3 className="text-lg font-bold text-white mb-1">{product.name}</h3>
-              <p className="text-sm text-brand-bronze mb-4">{product.capacity}</p>
-              <div className="flex justify-between items-center mt-6">
-                <span className="text-xl font-bold text-brand-gold">₹{product.price.toLocaleString()}</span>
-                <button 
-                  onClick={() => handleAddToCart(product)}
-                  className="bg-brand-green hover:bg-brand-gold hover:text-brand-dark text-white p-2 rounded-full transition duration-300"
-                >
-                  <ShoppingCart className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-          </div>
+      {/* Search & Filters */}
+      <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="relative flex-1">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <input
+            type="text"
+            placeholder="Search machinery..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input-dark pl-12"
+          />
+          {search && (
+            <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <select
+          value={sortBy}
+          onChange={e => setSortBy(e.target.value)}
+          className="input-dark md:w-52 cursor-pointer"
+        >
+          <option value="default">Sort By: Default</option>
+          <option value="price-asc">Price: Low to High</option>
+          <option value="price-desc">Price: High to Low</option>
+          <option value="rating">Highest Rated</option>
+        </select>
+      </div>
+
+      {/* Category Pills */}
+      <div className="flex flex-wrap gap-3 mb-10">
+        {CATEGORIES.map(cat => (
+          <button
+            key={cat}
+            onClick={() => setCategory(cat)}
+            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+              category === cat
+                ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30'
+                : 'bg-white/5 text-gray-400 border border-white/10 hover:border-yellow-500/40 hover:text-yellow-400'
+            }`}
+          >
+            {cat}
+          </button>
         ))}
       </div>
+
+      {/* Results Count */}
+      <div className="text-gray-500 text-sm mb-6">
+        Showing <span className="text-yellow-400 font-semibold">{filtered.length}</span> machines
+      </div>
+
+      {/* Grid */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-24">
+          <div className="text-6xl mb-4">🔍</div>
+          <h3 className="text-xl font-bold text-white mb-2">No machines found</h3>
+          <p className="text-gray-400">Try a different search or category</p>
+          <button onClick={() => { setSearch(''); setCategory('All'); }} className="btn-outline-gold mt-6">Clear Filters</button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filtered.map(product => (
+            <div key={product.id} className="product-card group cursor-pointer" onClick={() => navigate(`/products/${product.id}`)}>
+              {/* Image */}
+              <div className="relative h-52 overflow-hidden">
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-75 group-hover:opacity-95"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                {product.tag && (
+                  <span className="absolute top-3 left-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-md">{product.tag}</span>
+                )}
+                {!product.inStock && (
+                  <span className="absolute top-3 right-3 bg-red-600/90 text-white text-xs font-bold px-2 py-1 rounded-md">Out of Stock</span>
+                )}
+                {/* Hover Overlay */}
+                <div className="absolute inset-0 bg-yellow-500/0 group-hover:bg-yellow-500/5 transition-all duration-300 flex items-center justify-center">
+                  <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full transition-all">View Details</span>
+                </div>
+              </div>
+
+              {/* Info */}
+              <div className="p-5">
+                <div className="text-xs text-yellow-500/70 font-semibold uppercase tracking-wide mb-1">{product.category}</div>
+                <h3 className="font-bold text-white text-sm mb-1 line-clamp-2 leading-snug">{product.name}</h3>
+                <p className="text-xs text-gray-500 mb-3 flex items-center gap-1">
+                  <SlidersHorizontal className="w-3 h-3" /> {product.capacity}
+                </p>
+                <div className="flex items-center gap-1 mb-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} />
+                  ))}
+                  <span className="text-xs text-gray-500 ml-1">({product.reviews})</span>
+                </div>
+
+                <div className="flex items-end justify-between">
+                  <div>
+                    <div className="text-lg font-black text-yellow-400">₹{product.price.toLocaleString()}</div>
+                    <div className="text-xs text-gray-600 line-through">₹{product.originalPrice.toLocaleString()}</div>
+                    <div className="text-xs text-green-400 font-medium">
+                      Save ₹{(product.originalPrice - product.price).toLocaleString()}
+                    </div>
+                  </div>
+                  <button
+                    onClick={e => handleAddCart(product, e)}
+                    disabled={!product.inStock}
+                    className="btn-gold text-xs px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <ShoppingCart className="w-3 h-3" /> Quote
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {toast && <Toast msg={toast} onClose={() => setToast('')} />}
     </div>
   );
 };
