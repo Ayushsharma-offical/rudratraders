@@ -557,11 +557,25 @@ const ClientRequests = () => {
 
   const fetchQuotes = async () => {
     setLoading(true);
+    let isDone = false;
+    
+    // Timeout to prevent infinite loading if Firestore hangs
+    setTimeout(() => {
+      if (!isDone) setLoading(false);
+    }, 3000);
+
     try {
-      const q = query(collection(db, 'quotes'), orderBy('createdAt', 'desc'));
+      // Removed orderBy to prevent "Missing Index" hangs, we sort in JS
+      const q = query(collection(db, 'quotes'));
       const snap = await getDocs(q);
-      setQuotes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    } catch (err) { console.error(err); }
+      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort by createdAt desc manually
+      data.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setQuotes(data);
+    } catch (err) { 
+      console.error(err); 
+    }
+    isDone = true;
     setLoading(false);
   };
 
