@@ -220,7 +220,7 @@ const CartPage = () => {
       {step === 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Form or Google Login */}
-          <div className="lg:col-span-2 glass-card p-8 rounded-2xl">
+          <div className="lg:col-span-2 glass-card p-8 rounded-2xl hover-float">
             {!user ? (
               <div className="text-center py-16">
                 <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -291,7 +291,7 @@ const CartPage = () => {
           </div>
 
           {/* Summary */}
-          <div className="glass-card p-6 rounded-2xl h-fit sticky top-28">
+          <div className="glass-card p-6 rounded-2xl h-fit sticky top-28 hover-float">
             <h3 className="font-bold text-white text-lg mb-6">Order Summary</h3>
             <div className="space-y-3 mb-6">
               {cart.map(i => (

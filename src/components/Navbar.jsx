@@ -34,7 +34,7 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className={`sticky top-0 z-50 transition-all duration-300 py-3 px-4 ${scrolled ? 'bg-[#3e2312]/90 backdrop-blur-md shadow-lg border-b border-white/5' : ''}`}>
+    <nav className="sticky top-0 z-50 transition-all duration-300 py-3 px-4 bg-[#2D1C11]/85 backdrop-blur-md shadow-lg border-b border-white/10">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between">
           

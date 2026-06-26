@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ShieldCheck, Users, Factory, Truck, Award, Star, ArrowRight } from 'lucide-react';
-import { MACHINERY, addToCart } from '../data/machinery';
+import { addToCart } from '../data/machinery';
+import { useMachinery } from '../hooks/useMachinery';
 
 const Toast = ({ msg, onClose }) => (
   <div className="toast" onClick={onClose}>
@@ -14,6 +15,7 @@ const Toast = ({ msg, onClose }) => (
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { machinery: MACHINERY, loading } = useMachinery();
   const [toast, setToast] = useState('');
   const featured = MACHINERY.filter(m => m.inStock).slice(0, 4);
 
@@ -96,43 +98,47 @@ const HomePage = () => {
 
       {/* FEATURED PRODUCTS */}
       <section className="py-24 max-w-7xl mx-auto px-6">
-        <div className="flex justify-between items-end mb-12">
-          <div>
-            <h2 className="text-4xl font-bold text-white">Top <span className="coral-text font-serif italic">Selling</span></h2>
-            <p className="text-[#a09080] mt-3">Premium industrial equipment trusted by 500+ businesses.</p>
-          </div>
-          <Link to="/products" className="hidden md:flex items-center gap-2 text-white hover:text-[#F05A5A] transition-colors">
-            View All <ArrowRight className="w-4 h-4" />
-          </Link>
+        <div className="text-center mb-16">
+          <div className="badge-gold inline-block mb-4">Top Rated</div>
+          <h2 className="text-4xl font-black text-white mb-4">Featured <span className="gold-text">Machinery</span></h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">Explore our best-selling industrial equipment designed for high efficiency.</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {featured.map(product => (
-            <div key={product.id} className="glass-card rounded-2xl overflow-hidden group cursor-pointer border border-white/10 hover:border-white/30 transition-all" onClick={() => navigate(`/products/${product.id}`)}>
-              {/* Image */}
-              <div className="relative h-52 overflow-hidden bg-black/40">
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80" />
-              </div>
-              {/* Info */}
-              <div className="p-5">
-                <div className="text-xs text-[#d4af37] font-medium uppercase tracking-wide mb-1">{product.category}</div>
-                <h3 className="font-bold text-white text-sm mb-1 line-clamp-1">{product.name}</h3>
-                <p className="text-xs text-[#a09080] mb-4">{product.capacity}</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-lg font-bold text-white">₹{product.price.toLocaleString()}</div>
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="glass-card rounded-2xl h-80 animate-pulse bg-white/5 border border-white/5 hover-float"></div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {MACHINERY.slice(0, 4).map(product => (
+              <div key={product.id} className="glass-card rounded-2xl overflow-hidden group cursor-pointer border border-white/10 hover:border-white/30 transition-all" onClick={() => navigate(`/products/${product.id}`)}>
+                {/* Image */}
+                <div className="relative h-52 overflow-hidden bg-black/40">
+                  <img src={product.image} alt={product.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-80" />
+                </div>
+                {/* Info */}
+                <div className="p-5">
+                  <div className="text-xs text-[#d4af37] font-medium uppercase tracking-wide mb-1">{product.category}</div>
+                  <h3 className="font-bold text-white text-sm mb-1 line-clamp-1">{product.name}</h3>
+                  <p className="text-xs text-[#a09080] mb-4">{product.capacity}</p>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-lg font-bold text-white">₹{product.price.toLocaleString()}</div>
+                    </div>
+                    <button
+                      onClick={e => { e.stopPropagation(); handleAddCart(product); }}
+                      className="btn-coral px-4 py-1.5 text-xs rounded-lg"
+                    >
+                      Add
+                    </button>
                   </div>
-                  <button
-                    onClick={e => { e.stopPropagation(); handleAddCart(product); }}
-                    className="btn-coral px-4 py-1.5 text-xs rounded-lg"
-                  >
-                    Add
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {toast && <Toast msg={toast} onClose={() => setToast('')} />}

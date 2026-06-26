@@ -285,5 +285,6 @@ export const generateQuotation = (clientDetails, items, refNo) => {
   doc.text('Thank you for your business! | rudratraders.store@gmail.com | +91 7982813507', pageW / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
 
   // Save
-  doc.save(`Rudra_Traders_Quotation_${clientDetails.name.replace(/\s+/g, '_')}_${refNo}.pdf`);
+  const safeName = (clientDetails.name || 'Client').replace(/\s+/g, '_');
+  doc.save(`Rudra_Traders_Quotation_${safeName}_${refNo}.pdf`);
 };

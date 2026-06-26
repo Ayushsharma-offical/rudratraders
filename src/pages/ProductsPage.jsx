@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Star, ShoppingCart, SlidersHorizontal, X, ShieldCheck } from 'lucide-react';
-import { MACHINERY, CATEGORIES, addToCart } from '../data/machinery';
+import { CATEGORIES, addToCart } from '../data/machinery';
+import { useMachinery } from '../hooks/useMachinery';
 
 const Toast = ({ msg, onClose }) => (
   <div className="toast" onClick={onClose}>
@@ -18,6 +19,7 @@ const ProductsPage = () => {
   const [category, setCategory] = useState('All');
   const [sortBy, setSortBy] = useState('default');
   const [toast, setToast] = useState('');
+  const { machinery: MACHINERY, loading } = useMachinery();
 
   const handleAddCart = (product, e) => {
     e.stopPropagation();
@@ -53,7 +55,7 @@ const ProductsPage = () => {
             placeholder="Search machinery..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="input-dark pl-12"
+            className="input-dark pl-12 bg-[#4a2e1b]/80 border-white/20 focus:border-[#d4af37]"
           />
           {search && (
             <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
@@ -64,7 +66,7 @@ const ProductsPage = () => {
         <select
           value={sortBy}
           onChange={e => setSortBy(e.target.value)}
-          className="input-dark md:w-52 cursor-pointer"
+          className="input-dark md:w-52 cursor-pointer bg-[#4a2e1b]/80 border-white/20 hover:border-[#d4af37] focus:border-[#d4af37]"
         >
           <option value="default">Sort By: Default</option>
           <option value="price-asc">Price: Low to High</option>
@@ -96,7 +98,13 @@ const ProductsPage = () => {
       </div>
 
       {/* Grid */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {[1,2,3,4,5,6,7,8].map(i => (
+            <div key={i} className="glass-card rounded-2xl h-80 animate-pulse bg-white/5 border border-white/5"></div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-24">
           <div className="text-6xl mb-4">🔍</div>
           <h3 className="text-xl font-bold text-white mb-2">No machines found</h3>
@@ -106,7 +114,7 @@ const ProductsPage = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filtered.map(product => (
-            <div key={product.id} className="product-card group cursor-pointer" onClick={() => navigate(`/products/${product.id}`)}>
+            <div key={product.id} className="glass-card rounded-2xl overflow-hidden group cursor-pointer hover-float border border-white/10 hover:border-white/30 transition-all" onClick={() => navigate(`/products/${product.id}`)}>
               {/* Image */}
               <div className="relative h-52 overflow-hidden">
                 <img
@@ -141,20 +149,22 @@ const ProductsPage = () => {
                   <span className="text-xs text-gray-500 ml-1">({product.reviews})</span>
                 </div>
 
-                <div className="flex items-end justify-between">
-                  <div>
-                    <div className="text-lg font-black text-yellow-400">₹{product.price.toLocaleString()}</div>
-                    <div className="text-xs text-gray-600 line-through">₹{product.originalPrice.toLocaleString()}</div>
-                    <div className="text-xs text-green-400 font-medium">
+                <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-white/10">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="text-xl font-bold text-white">₹{product.price.toLocaleString()}</div>
+                      <div className="text-xs text-gray-500 line-through">₹{product.originalPrice.toLocaleString()}</div>
+                    </div>
+                    <div className="text-xs text-green-400 font-medium bg-green-400/10 px-2 py-1 rounded-md">
                       Save ₹{(product.originalPrice - product.price).toLocaleString()}
                     </div>
                   </div>
                   <button
                     onClick={e => handleAddCart(product, e)}
                     disabled={!product.inStock}
-                    className="btn-gold text-xs px-4 py-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="btn-coral w-full justify-center text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <ShoppingCart className="w-3 h-3" /> Quote
+                    <ShoppingCart className="w-4 h-4" /> Add to Quote
                   </button>
                 </div>
               </div>

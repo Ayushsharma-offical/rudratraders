@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { collection, getDocs, addDoc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
 import {
   LayoutDashboard, Package, FileText, LogOut, TrendingUp,
-  Users, DollarSign, Plus, X, CheckCircle2, Trash2, Download, Menu
+  Users, DollarSign, Plus, X, CheckCircle2, Trash2, Edit, Save, ArrowRight
 } from 'lucide-react';
-import { MACHINERY } from '../data/machinery';
-import { generateQuotation } from '../utils/generateQuotation';
+import { useMachinery } from '../hooks/useMachinery';
+import { MACHINERY as STATIC_MACHINERY, CATEGORIES } from '../data/machinery';
 
 // ---- LOGIN SCREEN ----
 const AdminLogin = ({ onLogin }) => {
@@ -34,20 +33,20 @@ const AdminLogin = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen hero-gradient flex items-center justify-center px-4">
-      <div className="glass-card p-10 rounded-3xl w-full max-w-md" style={{ border: '1px solid rgba(212,175,55,0.3)' }}>
+      <div className="glass-card p-10 rounded-3xl w-full max-w-md hover-float" style={{ border: '1px solid rgba(212,175,55,0.3)' }}>
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-2xl flex items-center justify-center text-black font-black text-2xl mx-auto mb-4">R</div>
+          <div className="w-16 h-16 bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-2xl flex items-center justify-center text-black font-black text-2xl mx-auto mb-4 shadow-lg shadow-yellow-900/50">R</div>
           <h1 className="text-2xl font-black text-white">Admin Portal</h1>
           <p className="text-gray-400 text-sm mt-1">Rudra Traders Management System</p>
         </div>
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm text-gray-400 mb-2">Email Address</label>
-            <input type="email" className="input-dark" placeholder="admin@rudratraders.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input type="email" className="input-dark bg-black/40 border-white/10 focus:border-[#d4af37]" placeholder="admin@rudratraders.com" value={email} onChange={e => setEmail(e.target.value)} required />
           </div>
           <div>
             <label className="block text-sm text-gray-400 mb-2">Password</label>
-            <input type="password" className="input-dark" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
+            <input type="password" className="input-dark bg-black/40 border-white/10 focus:border-[#d4af37]" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
           {error && <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-lg p-3">{error}</div>}
           <button type="submit" disabled={loading} className="btn-gold w-full justify-center mt-2 disabled:opacity-50">
@@ -57,6 +56,9 @@ const AdminLogin = ({ onLogin }) => {
         <div className="mt-6 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded-xl text-xs text-gray-500 text-center">
           🔒 Secure admin access only
         </div>
+        <button onClick={() => window.location.href = '/'} className="mt-4 text-gray-400 hover:text-white text-sm w-full flex items-center justify-center gap-2 transition-colors">
+          &larr; Exit to Website
+        </button>
       </div>
     </div>
   );
@@ -67,14 +69,13 @@ const Sidebar = ({ active, setActive, onLogout }) => {
   const items = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'catalog', label: 'Machinery Catalog', icon: Package },
-    { id: 'quotation', label: 'Generate Quotation', icon: FileText },
-    { id: 'inquiries', label: 'Client Inquiries', icon: Users },
+    { id: 'requests', label: 'Client Requests', icon: FileText },
   ];
 
   return (
-    <div className="admin-sidebar flex flex-col">
+    <div className="admin-sidebar flex flex-col w-64 shrink-0 border-r border-white/5 bg-[#1a100a]/80 backdrop-blur-xl">
       {/* Logo */}
-      <div className="p-6 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(212,175,55,0.1)' }}>
+      <div className="p-6 flex items-center gap-3 border-b border-white/5">
         <div className="w-9 h-9 bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-xl flex items-center justify-center text-black font-black">R</div>
         <div>
           <div className="text-sm font-black gold-text">RUDRA TRADERS</div>
@@ -83,14 +84,14 @@ const Sidebar = ({ active, setActive, onLogout }) => {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 p-4 space-y-1">
+      <nav className="flex-1 p-4 space-y-2">
         {items.map(item => (
           <button
             key={item.id}
             onClick={() => setActive(item.id)}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
               active === item.id
-                ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                ? 'bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/20 shadow-lg shadow-[#d4af37]/5'
                 : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}
           >
@@ -101,7 +102,7 @@ const Sidebar = ({ active, setActive, onLogout }) => {
       </nav>
 
       {/* Logout */}
-      <div className="p-4" style={{ borderTop: '1px solid rgba(212,175,55,0.1)' }}>
+      <div className="p-4 border-t border-white/5">
         <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-all">
           <LogOut className="w-5 h-5" />
           Logout
@@ -112,32 +113,60 @@ const Sidebar = ({ active, setActive, onLogout }) => {
 };
 
 // ---- DASHBOARD OVERVIEW ----
-const DashboardOverview = () => {
+const DashboardOverview = ({ machinery, loading }) => {
+  const [initLoading, setInitLoading] = useState(false);
+
+  const handleInitDB = async () => {
+    setInitLoading(true);
+    try {
+      for (const m of STATIC_MACHINERY) {
+        await addDoc(collection(db, 'machinery'), m);
+      }
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+    }
+    setInitLoading(false);
+  };
+
+  const inStock = machinery.filter(m => m.inStock).length;
+  const avgPrice = machinery.length ? Math.round(machinery.reduce((a,m) => a + Number(m.price), 0) / machinery.length) : 0;
+  
   const stats = [
-    { label: 'Total Products', value: MACHINERY.length, icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { label: 'In Stock', value: MACHINERY.filter(m => m.inStock).length, icon: TrendingUp, color: 'text-green-400', bg: 'bg-green-500/10' },
-    { label: 'Avg. Price', value: `₹${Math.round(MACHINERY.reduce((a,m) => a + m.price, 0) / MACHINERY.length).toLocaleString()}`, icon: DollarSign, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
-    { label: 'Categories', value: [...new Set(MACHINERY.map(m => m.category))].length, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+    { label: 'Total Products', value: machinery.length, icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { label: 'In Stock', value: inStock, icon: TrendingUp, color: 'text-green-400', bg: 'bg-green-500/10' },
+    { label: 'Avg. Price', value: `₹${avgPrice.toLocaleString()}`, icon: DollarSign, color: 'text-yellow-400', bg: 'bg-yellow-500/10' },
+    { label: 'Categories', value: [...new Set(machinery.map(m => m.category))].length, icon: Users, color: 'text-purple-400', bg: 'bg-purple-500/10' },
   ];
 
   return (
     <div>
-      <h2 className="text-2xl font-black text-white mb-8">Dashboard Overview</h2>
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-2xl font-black text-white">Dashboard Overview</h2>
+        {machinery.length === 0 && !loading && (
+          <button onClick={handleInitDB} disabled={initLoading} className="btn-coral">
+            {initLoading ? 'Initializing...' : 'Initialize Database with Default Data'}
+          </button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
         {stats.map((s, i) => (
-          <div key={i} className="glass-card p-6 rounded-2xl">
+          <div key={i} className="glass-card p-6 rounded-2xl hover-float border border-white/5">
             <div className={`w-12 h-12 ${s.bg} rounded-xl flex items-center justify-center mb-4`}>
               <s.icon className={`w-6 h-6 ${s.color}`} />
             </div>
-            <div className={`text-3xl font-black mb-1 ${s.color}`}>{s.value}</div>
+            <div className={`text-3xl font-black mb-1 ${s.color}`}>
+              {loading ? <span className="animate-pulse">...</span> : s.value}
+            </div>
             <div className="text-gray-400 text-sm">{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Product Summary Table */}
-      <div className="glass-card rounded-2xl overflow-hidden">
-        <div className="p-6" style={{ borderBottom: '1px solid rgba(212,175,55,0.1)' }}>
+      <div className="glass-card rounded-2xl overflow-hidden hover-float border border-white/5">
+        <div className="p-6 border-b border-white/5">
           <h3 className="font-bold text-white">Machinery Catalog Summary</h3>
         </div>
         <div className="overflow-x-auto">
@@ -152,11 +181,13 @@ const DashboardOverview = () => {
               </tr>
             </thead>
             <tbody>
-              {MACHINERY.map(m => (
+              {loading ? (
+                <tr><td colSpan="5" className="text-center py-8 text-gray-500 animate-pulse">Loading database...</td></tr>
+              ) : machinery.map(m => (
                 <tr key={m.id}>
                   <td className="text-white font-medium">{m.name}</td>
                   <td>{m.category}</td>
-                  <td className="text-yellow-400 font-bold">₹{m.price.toLocaleString()}</td>
+                  <td className="text-yellow-400 font-bold">₹{Number(m.price).toLocaleString()}</td>
                   <td>{m.capacity}</td>
                   <td>
                     <span className={`px-2 py-1 rounded-full text-xs font-bold ${m.inStock ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
@@ -165,6 +196,9 @@ const DashboardOverview = () => {
                   </td>
                 </tr>
               ))}
+              {machinery.length === 0 && !loading && (
+                <tr><td colSpan="5" className="text-center py-8 text-gray-500">No machinery found. Please initialize the database.</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -173,149 +207,203 @@ const DashboardOverview = () => {
   );
 };
 
-// ---- CATALOG VIEW ----
-const CatalogView = () => (
-  <div>
-    <div className="flex justify-between items-center mb-8">
-      <h2 className="text-2xl font-black text-white">Machinery Catalog</h2>
-    </div>
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-      {MACHINERY.map(m => (
-        <div key={m.id} className="glass-card rounded-2xl overflow-hidden">
-          <img src={m.image} alt={m.name} className="w-full h-40 object-cover opacity-70" />
-          <div className="p-5">
-            <div className="text-xs text-yellow-500/60 font-semibold uppercase mb-1">{m.category}</div>
-            <h3 className="font-bold text-white mb-1">{m.name}</h3>
-            <p className="text-sm text-gray-500 mb-3">{m.capacity}</p>
-            <div className="flex justify-between items-center">
-              <span className="text-yellow-400 font-black text-lg">₹{m.price.toLocaleString()}</span>
-              <span className={`text-xs font-bold px-2 py-1 rounded-full ${m.inStock ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                {m.inStock ? 'In Stock' : 'Out of Stock'}
-              </span>
+// ---- CATALOG VIEW (CRUD) ----
+const CatalogView = ({ machinery, refetch, loading }) => {
+  const [showAdd, setShowAdd] = useState(false);
+  const [formData, setFormData] = useState({ name: '', category: 'Feed Processing', capacity: '', price: '', originalPrice: '', image: '', description: '', inStock: true });
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await addDoc(collection(db, 'machinery'), {
+        ...formData,
+        price: Number(formData.price),
+        originalPrice: Number(formData.originalPrice),
+        rating: 5.0,
+        reviews: 0
+      });
+      setShowAdd(false);
+      refetch();
+    } catch (err) {
+      console.error(err);
+    }
+    setSaving(false);
+  };
+
+  const handleToggleStock = async (id, currentStatus) => {
+    try {
+      const docRef = doc(db, 'machinery', id);
+      await updateDoc(docRef, { inStock: !currentStatus });
+      refetch();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if(!window.confirm("Are you sure you want to delete this machine?")) return;
+    try {
+      await deleteDoc(doc(db, 'machinery', id));
+      refetch();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  if (showAdd) {
+    return (
+      <div className="max-w-2xl mx-auto glass-card p-8 rounded-3xl hover-float border border-white/5">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-black text-white">Add New Machinery</h2>
+          <button onClick={() => setShowAdd(false)} className="text-gray-400 hover:text-white"><X className="w-6 h-6" /></button>
+        </div>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Machine Name *</label>
+            <input required type="text" className="input-dark bg-black/30 border-white/10" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Category</label>
+              <select className="input-dark bg-black/30 border-white/10" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                {CATEGORIES.filter(c => c !== 'All').map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Capacity (e.g. 100 KG/HR)</label>
+              <input required type="text" className="input-dark bg-black/30 border-white/10" value={formData.capacity} onChange={e => setFormData({...formData, capacity: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Selling Price (₹) *</label>
+              <input required type="number" className="input-dark bg-black/30 border-white/10" value={formData.price} onChange={e => setFormData({...formData, price: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Original Price (₹)</label>
+              <input required type="number" className="input-dark bg-black/30 border-white/10" value={formData.originalPrice} onChange={e => setFormData({...formData, originalPrice: e.target.value})} />
             </div>
           </div>
-        </div>
-      ))}
-    </div>
-  </div>
-);
-
-// ---- GENERATE QUOTATION (ADMIN) ----
-const AdminQuotation = () => {
-  const [items, setItems] = useState([{ description: '', quantity: 1, rate: '' }]);
-  const [client, setClient] = useState({ name: '', careOf: '', address: '', pincode: '', phone: '', projectType: '' });
-  const [generated, setGenerated] = useState(false);
-
-  const addItem = () => setItems([...items, { description: '', quantity: 1, rate: '' }]);
-  const removeItem = (i) => setItems(items.filter((_, idx) => idx !== i));
-  const updateItem = (i, field, val) => {
-    const updated = [...items];
-    updated[i][field] = val;
-    setItems(updated);
-  };
-
-  const handleGenerate = () => {
-    const refNo = (parseInt(localStorage.getItem('rudra_ref') || '65') + 1).toString();
-    localStorage.setItem('rudra_ref', refNo);
-    generateQuotation(client, items, refNo);
-    setGenerated(true);
-    setTimeout(() => setGenerated(false), 3000);
-  };
-
-  const total = items.reduce((a, i) => a + (parseFloat(i.rate) || 0) * (parseInt(i.quantity) || 0), 0);
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Image URL *</label>
+            <input required type="url" className="input-dark bg-black/30 border-white/10" placeholder="https://..." value={formData.image} onChange={e => setFormData({...formData, image: e.target.value})} />
+          </div>
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">Description</label>
+            <textarea required rows="3" className="input-dark bg-black/30 border-white/10 resize-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}></textarea>
+          </div>
+          <button type="submit" disabled={saving} className="btn-gold w-full justify-center mt-4">
+            {saving ? 'Saving to Database...' : 'Save Machinery'} <Save className="w-4 h-4 ml-2" />
+          </button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <h2 className="text-2xl font-black text-white mb-8">Generate Client Quotation</h2>
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Client Details */}
-        <div className="glass-card p-6 rounded-2xl">
-          <h3 className="font-bold text-white mb-6">Client Details</h3>
-          <div className="space-y-4">
-            {[
-              { label: 'Client Name *', key: 'name', placeholder: 'Full name' },
-              { label: 'S/O or Care Of', key: 'careOf', placeholder: 'Father / Guardian name' },
-              { label: 'Address *', key: 'address', placeholder: 'Full address', textarea: true },
-              { label: 'PIN Code', key: 'pincode', placeholder: 'PIN Code' },
-              { label: 'Mobile *', key: 'phone', placeholder: '10-digit mobile' },
-              { label: 'Project / Unit Name', key: 'projectType', placeholder: 'e.g. Bakery Processing Unit' },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">{f.label}</label>
-                {f.textarea ? (
-                  <textarea className="input-dark resize-none" rows="2" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })}></textarea>
-                ) : (
-                  <input type="text" className="input-dark" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })} />
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Items */}
-        <div className="glass-card p-6 rounded-2xl">
-          <h3 className="font-bold text-white mb-6">Machinery Items</h3>
-          <div className="space-y-4">
-            {items.map((item, i) => (
-              <div key={i} className="p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(212,175,55,0.1)' }}>
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-xs text-yellow-400 font-bold">Item {i + 1}</span>
-                  {items.length > 1 && (
-                    <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-300">
-                      <X className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="col-span-3">
-                    <input type="text" className="input-dark text-sm" placeholder="Machine description" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
-                  </div>
-                  <div>
-                    <input type="number" className="input-dark text-sm" placeholder="Qty" min="1" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} />
-                  </div>
-                  <div className="col-span-2">
-                    <input type="number" className="input-dark text-sm" placeholder="Rate (₹)" value={item.rate} onChange={e => updateItem(i, 'rate', e.target.value)} />
-                  </div>
-                </div>
-                {item.rate && item.quantity && (
-                  <div className="text-xs text-gray-500 mt-2">
-                    Subtotal: <span className="text-yellow-400 font-bold">₹{(parseFloat(item.rate) * parseInt(item.quantity)).toLocaleString()}</span>
-                  </div>
-                )}
-              </div>
-            ))}
-            <button onClick={addItem} className="w-full btn-outline-gold text-sm justify-center">
-              <Plus className="w-4 h-4" /> Add Item
-            </button>
-          </div>
-
-          {/* Total */}
-          <div className="mt-6 p-4 rounded-xl" style={{ background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.2)' }}>
-            <div className="flex justify-between text-sm text-gray-400 mb-1">
-              <span>Subtotal (ex. GST)</span>
-              <span>₹{total.toLocaleString()}</span>
-            </div>
-            <div className="flex justify-between text-sm text-gray-400 mb-2">
-              <span>GST @18%</span>
-              <span>₹{(total * 0.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-            </div>
-            <div className="flex justify-between font-black text-xl">
-              <span className="text-white">Grand Total</span>
-              <span className="gold-text">₹{(total * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
-            </div>
-          </div>
-
-          <button onClick={handleGenerate} className="btn-gold w-full justify-center mt-6">
-            <Download className="w-5 h-5" /> Generate & Download PDF
-          </button>
-
-          {generated && (
-            <div className="mt-4 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-400 text-sm">
-              <CheckCircle2 className="w-4 h-4" /> Quotation PDF downloaded!
-            </div>
-          )}
-        </div>
+      <div className="flex justify-between items-center mb-8">
+        <h2 className="text-2xl font-black text-white">Manage Catalog</h2>
+        <button onClick={() => setShowAdd(true)} className="btn-gold">
+          <Plus className="w-4 h-4" /> Add Machine
+        </button>
       </div>
+      
+      {loading ? (
+        <div className="text-center py-20 text-yellow-400 animate-pulse">Fetching from database...</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+          {machinery.map(m => (
+            <div key={m.id} className="glass-card rounded-2xl overflow-hidden hover-float border border-white/5 flex flex-col">
+              <img src={m.image} alt={m.name} className="w-full h-40 object-cover opacity-70" />
+              <div className="p-5 flex-1 flex flex-col">
+                <div className="text-xs text-yellow-500/60 font-semibold uppercase mb-1">{m.category}</div>
+                <h3 className="font-bold text-white mb-1 line-clamp-1">{m.name}</h3>
+                <p className="text-sm text-gray-500 mb-3">{m.capacity}</p>
+                
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-yellow-400 font-black text-lg">₹{Number(m.price).toLocaleString()}</span>
+                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${m.inStock ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                    {m.inStock ? 'In Stock' : 'Out of Stock'}
+                  </span>
+                </div>
+                
+                <div className="mt-auto pt-4 border-t border-white/5 flex gap-2">
+                  <button onClick={() => handleToggleStock(m.id, m.inStock)} className="flex-1 btn-outline-gold text-xs justify-center px-2 py-1.5">
+                    {m.inStock ? 'Mark Out of Stock' : 'Mark In Stock'}
+                  </button>
+                  <button onClick={() => handleDelete(m.id)} className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-lg transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ---- CLIENT REQUESTS (QUOTATIONS) ----
+const ClientRequests = () => {
+  const [quotes, setQuotes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchQuotes = async () => {
+      try {
+        const q = query(collection(db, 'quotes'), orderBy('createdAt', 'desc'));
+        const snap = await getDocs(q);
+        setQuotes(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        console.error(err);
+      }
+      setLoading(false);
+    };
+    fetchQuotes();
+  }, []);
+
+  return (
+    <div>
+      <h2 className="text-2xl font-black text-white mb-8">Client Quotation Requests</h2>
+      {loading ? (
+        <div className="text-center py-20 text-yellow-400 animate-pulse">Loading live requests...</div>
+      ) : quotes.length === 0 ? (
+        <div className="glass-card p-12 text-center rounded-3xl border border-white/5">
+          <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-white mb-2">No Requests Yet</h3>
+          <p className="text-gray-400">When clients generate quotes on the website, they will appear here in real-time.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {quotes.map(q => (
+            <div key={q.id} className="glass-card p-6 rounded-2xl hover-float border border-white/5 flex flex-col md:flex-row gap-6 justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="font-bold text-white text-lg">{q.clientDetails.name}</h3>
+                  <span className="text-xs text-gray-500 bg-black/30 px-2 py-1 rounded-md">Ref: {q.refNo}</span>
+                </div>
+                <div className="text-sm text-gray-400 space-y-1">
+                  <p><span className="text-gray-500">Phone:</span> {q.clientDetails.phone}</p>
+                  <p><span className="text-gray-500">Project:</span> {q.clientDetails.projectType || 'N/A'}</p>
+                  <p><span className="text-gray-500">Address:</span> {q.clientDetails.address}, {q.clientDetails.pincode}</p>
+                </div>
+              </div>
+              
+              <div className="md:text-right flex flex-col justify-between">
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Total Value</div>
+                  <div className="text-2xl font-black gold-text">₹{Number(q.total).toLocaleString('en-IN', {maximumFractionDigits:0})}</div>
+                </div>
+                <div className="mt-4 text-xs text-gray-500">
+                  {q.createdAt?.toDate().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -323,23 +411,26 @@ const AdminQuotation = () => {
 // ---- MAIN ADMIN PAGE ----
 const AdminPage = () => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [active, setActive] = useState('dashboard');
+  const navigate = useNavigate();
+  const { machinery, loading: machineryLoading, refetch } = useMachinery();
 
   useEffect(() => {
     const isAdmin = localStorage.getItem('rudra_admin') === 'true';
     if (isAdmin) {
       setUser({ email: 'admin@rudratraders.com' });
     }
-    setLoading(false);
+    setLoadingUser(false);
   }, []);
 
   const handleLogout = async () => {
     localStorage.removeItem('rudra_admin');
     setUser(null);
+    navigate('/');
   };
 
-  if (loading) return (
+  if (loadingUser) return (
     <div className="min-h-screen hero-gradient flex items-center justify-center">
       <div className="text-yellow-400 text-xl font-bold animate-pulse">Loading...</div>
     </div>
@@ -347,14 +438,17 @@ const AdminPage = () => {
 
   if (!user) return <AdminLogin onLogin={(u) => setUser(u)} />;
 
-  const views = { dashboard: DashboardOverview, catalog: CatalogView, quotation: AdminQuotation };
-  const ActiveView = views[active] || DashboardOverview;
+  const views = { 
+    dashboard: <DashboardOverview machinery={machinery} loading={machineryLoading} />, 
+    catalog: <CatalogView machinery={machinery} refetch={refetch} loading={machineryLoading} />, 
+    requests: <ClientRequests /> 
+  };
 
   return (
-    <div className="min-h-screen" style={{ background: '#0a0f0f' }}>
+    <div className="min-h-screen flex" style={{ background: '#0a0f0f' }}>
       <Sidebar active={active} setActive={setActive} onLogout={handleLogout} />
-      <div className="admin-content p-8">
-        <ActiveView />
+      <div className="flex-1 p-8 overflow-y-auto max-h-screen">
+        {views[active]}
       </div>
     </div>
   );
