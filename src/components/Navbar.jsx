@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, ChevronDown, Search, Lock } from 'lucide-react';
+import { ShoppingCart, Menu, X, Search, Lock, ArrowRight } from 'lucide-react';
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -10,7 +10,7 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll);
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
@@ -27,66 +27,70 @@ const Navbar = () => {
 
   const links = [
     { to: '/', label: 'Home' },
-    { to: '/products', label: 'Machinery' },
+    { to: '/products', label: 'Products' },
+    { to: '/machinery', label: 'Machinery' },
     { to: '/about', label: 'About' },
     { to: '/contact', label: 'Contact' },
   ];
 
   return (
-    <nav className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'navbar-glass shadow-2xl' : 'bg-[#0a0f0f] border-b border-yellow-500/10'}`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
+    <nav className={`sticky top-0 z-50 transition-all duration-300 py-3 px-4 ${scrolled ? 'bg-[#3e2312]/90 backdrop-blur-md shadow-lg border-b border-white/5' : ''}`}>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex items-center justify-between">
+          
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-600 to-yellow-800 flex items-center justify-center text-black font-black text-lg border-2 border-yellow-500/50">R</div>
-            <div>
-              <span className="text-xl font-black gold-text tracking-wide">RUDRA</span>
-              <span className="text-xl font-black text-white tracking-wide"> TRADERS</span>
-              <div className="text-[10px] text-yellow-500/70 tracking-widest uppercase font-medium -mt-1">MSME Machinery Specialists</div>
+            <div className="w-10 h-10 rounded-lg bg-[#274c43] flex items-center justify-center text-white font-medium text-lg">
+              R
             </div>
+            <span className="text-xl font-medium text-white">Rudra Traders</span>
           </Link>
 
-          {/* Desktop Links */}
+          {/* Desktop Links - Centered */}
           <div className="hidden md:flex items-center gap-8">
             {links.map(l => (
               <Link
                 key={l.to}
                 to={l.to}
-                className={`text-sm font-semibold transition-all duration-200 relative group ${
-                  pathname === l.to ? 'text-yellow-400' : 'text-gray-300 hover:text-yellow-400'
+                className={`text-sm font-medium transition-colors ${
+                  pathname === l.to || (l.to === '/' && pathname === '/') 
+                  ? 'text-[#F05A5A] border-b-2 border-[#F05A5A] pb-1' 
+                  : 'text-gray-300 hover:text-white'
                 }`}
               >
                 {l.label}
-                <span className={`absolute -bottom-1 left-0 h-0.5 bg-yellow-400 transition-all duration-200 ${pathname === l.to ? 'w-full' : 'w-0 group-hover:w-full'}`}></span>
               </Link>
             ))}
           </div>
 
-          {/* Right Side */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/cart')}
-              className="relative p-2 text-gray-300 hover:text-yellow-400 transition-colors"
-            >
-              <ShoppingCart className="w-6 h-6" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-yellow-500 text-black text-xs font-black rounded-full flex items-center justify-center">
-                  {cartCount}
-                </span>
-              )}
+          {/* Right Actions */}
+          <div className="flex items-center gap-5">
+            <button className="text-gray-300 hover:text-white transition-colors hidden md:block">
+              <Search className="w-5 h-5" />
             </button>
             <button
               onClick={() => navigate('/admin')}
-              className="p-2 text-gray-500 hover:text-yellow-400 transition-colors hidden md:block"
+              className="text-gray-400 hover:text-white transition-colors hidden md:block"
               title="Admin Portal"
             >
               <Lock className="w-4 h-4" />
             </button>
             <button
               onClick={() => navigate('/cart')}
-              className="hidden md:flex btn-gold text-sm"
+              className="relative text-gray-300 hover:text-white transition-colors"
             >
-              Request Quote
+              <ShoppingCart className="w-5 h-5" />
+              {cartCount > 0 && (
+                <span className="absolute -top-2 -right-2 w-4 h-4 bg-[#F05A5A] text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => navigate('/cart')}
+              className="hidden md:flex btn-green"
+            >
+              Order Now <ArrowRight className="w-4 h-4" />
             </button>
             <button className="md:hidden text-gray-300" onClick={() => setMobileOpen(!mobileOpen)}>
               {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -96,20 +100,20 @@ const Navbar = () => {
 
         {/* Mobile Menu */}
         {mobileOpen && (
-          <div className="md:hidden bg-black/95 backdrop-blur border-t border-yellow-500/10 py-4">
+          <div className="md:hidden pt-4 pb-2">
             {links.map(l => (
               <Link
                 key={l.to}
                 to={l.to}
                 onClick={() => setMobileOpen(false)}
-                className="block px-4 py-3 text-gray-300 hover:text-yellow-400 hover:bg-yellow-500/5 transition-all font-medium"
+                className="block px-2 py-3 text-gray-300 hover:text-white border-b border-white/5"
               >
                 {l.label}
               </Link>
             ))}
-            <div className="px-4 pt-3">
-              <button onClick={() => { navigate('/cart'); setMobileOpen(false); }} className="btn-gold w-full justify-center">
-                Request Quote
+            <div className="pt-4">
+              <button onClick={() => { navigate('/cart'); setMobileOpen(false); }} className="btn-green w-full justify-center">
+                Order Now <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </div>

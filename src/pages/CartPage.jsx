@@ -231,7 +231,7 @@ const CartPage = () => {
                 <button 
                   onClick={handleGoogleLogin} 
                   disabled={loadingGoogle}
-                  className="bg-white text-gray-900 font-bold px-6 py-3 rounded-lg flex items-center justify-center gap-3 mx-auto hover:bg-gray-100 transition-colors"
+                  className="bg-white text-black font-bold px-6 py-3 rounded-full flex items-center justify-center gap-3 mx-auto hover:bg-gray-200 transition-all w-64 shadow-lg border border-gray-200"
                 >
                   <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                   {loadingGoogle ? 'Signing in...' : 'Sign in with Google'}

@@ -345,7 +345,7 @@ const AdminPage = () => {
     </div>
   );
 
-  if (!user) return <AdminLogin onLogin={() => {}} />;
+  if (!user) return <AdminLogin onLogin={(u) => setUser(u)} />;
 
   const views = { dashboard: DashboardOverview, catalog: CatalogView, quotation: AdminQuotation };
   const ActiveView = views[active] || DashboardOverview;
