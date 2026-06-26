@@ -96,8 +96,8 @@ const AboutPage = () => {
                     onMouseLeave={(e) => { e.target.muted = true; }}
                     onTimeUpdate={(e) => { if (e.target.currentTime >= 5) { e.target.currentTime = 0; } }}
                   />
-                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                    <span className="text-white text-[8px] font-bold bg-black/60 px-2 py-1 rounded-full mb-1">🔊 Sound On</span>
+                  <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-end pb-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <span className="text-white text-[8px] font-bold bg-black/80 px-2 py-1 rounded-full">🔊 Sound On</span>
                   </div>
                 </div>
               ) : t.mediaType === 'image' ? (
