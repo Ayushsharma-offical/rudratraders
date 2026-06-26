@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn } from 'lucide-react';
+import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn, CreditCard } from 'lucide-react';
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
 import { auth, provider, rtdb } from '../firebase';
@@ -13,6 +13,8 @@ const CartPage = () => {
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
   const [step, setStep] = useState(1); // 1=Cart, 2=Details, 3=Done
+  const [paying, setPaying] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [client, setClient] = useState({
     name: '', careOf: '', address: '', pincode: '', phone: '', projectType: ''
   });
@@ -111,6 +113,82 @@ const CartPage = () => {
     setStep(3);
   };
 
+  const handlePayment = async () => {
+    setPaying(true);
+    try {
+      // 1. Create order on backend (amount in paise - minimum 100)
+      // Let's use 10% of total as advance, or minimum 5000 rupees for demo
+      const advanceAmount = Math.max(5000, Math.round(total * 0.10));
+      
+      const res = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: advanceAmount * 100, receipt: refCounter.toString() })
+      });
+      
+      const order = await res.json();
+      if (!order || order.error) throw new Error(order.error || 'Failed to create order');
+
+      // 2. Open Razorpay Modal
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        name: "Rudra Traders",
+        description: `Advance Payment for Quote #${refCounter}`,
+        order_id: order.order_id,
+        handler: async (response) => {
+          try {
+            // 3. Verify Payment Signature
+            const verifyRes = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const result = await verifyRes.json();
+            
+            if (result.success) {
+              setPaymentSuccess(true);
+              // Update status in RTDB
+              try {
+                // Find and update quote status using quote refNo (optional)
+              } catch (e) { console.error('Error updating status:', e); }
+            } else {
+              alert('Payment Verification Failed!');
+            }
+          } catch (err) {
+            console.error('Verify error:', err);
+            alert('Verification Error. Please contact support.');
+          }
+        },
+        prefill: {
+          name: client.name || '',
+          contact: client.phone || '',
+        },
+        theme: {
+          color: "#d4af37" // gold
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response){
+        console.error(response.error);
+        alert(response.error.description);
+      });
+      rzp.open();
+
+    } catch (error) {
+      console.error('Payment initiation error:', error);
+      alert('Could not start payment. Please try again.');
+    } finally {
+      setPaying(false);
+    }
+  };
+
   if (step === 3) return (
     <div className="pt-32 min-h-screen flex items-center justify-center px-6">
       <div className="glass-card p-12 rounded-3xl text-center max-w-lg w-full">
@@ -120,11 +198,27 @@ const CartPage = () => {
         <h2 className="text-3xl font-black text-white mb-3">Quotation Ready!</h2>
         <p className="text-gray-400 mb-2">Your PDF quotation has been downloaded successfully.</p>
         <p className="text-gray-500 text-sm mb-8">Your quote has been saved to our database. Our team will contact you within 24 hours.</p>
+        
+        {paymentSuccess ? (
+          <div className="mb-8 p-4 bg-green-500/10 border border-green-500/30 rounded-2xl">
+            <h3 className="text-green-400 font-bold mb-1">Advance Payment Received</h3>
+            <p className="text-sm text-green-500/70">Your order is now confirmed. We will process it immediately.</p>
+          </div>
+        ) : (
+          <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
+            <h3 className="text-yellow-400 font-bold mb-2 text-lg">Confirm Your Order Now</h3>
+            <p className="text-sm text-gray-400 mb-4">Pay 10% advance to lock current prices and prioritize your order processing.</p>
+            <button onClick={handlePayment} disabled={paying} className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
+              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Advance (₹{Math.max(5000, Math.round(total * 0.10)).toLocaleString()})</>}
+            </button>
+          </div>
+        )}
+
         <div className="space-y-3">
-          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); }} className="btn-gold w-full justify-center">
+          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); setPaymentSuccess(false); }} className="btn-outline-gold w-full justify-center">
             Start New Quote
           </button>
-          <button onClick={() => navigate('/products')} className="btn-outline-gold w-full justify-center">
+          <button onClick={() => navigate('/products')} className="btn-outline-gold w-full justify-center" style={{ background: 'transparent' }}>
             Continue Browsing
           </button>
         </div>
