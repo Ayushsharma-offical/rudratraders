@@ -26,7 +26,7 @@ const ContactPage = () => {
             {
               icon: Phone,
               title: 'Phone',
-              lines: ['+91 7982813507', '+91 6200054896'],
+              lines: ['+91 7982813507'],
               action: 'tel:+917982813507',
             },
             {

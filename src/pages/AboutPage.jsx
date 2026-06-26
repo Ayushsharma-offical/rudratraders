@@ -10,9 +10,9 @@ const AboutPage = () => {
   ];
 
   const team = [
-    { name: 'Mr. Rudra', role: 'Founder & CEO', desc: 'With 10+ years in MSME machinery, he leads with a deep passion for empowering small businesses.' },
-    { name: 'Operations Team', role: 'Logistics & Delivery', desc: 'Our operations team ensures every order is dispatched on time and delivered safely.' },
-    { name: 'Technical Team', role: 'Machinery Experts', desc: 'Industry experts who verify quality, capacity, and efficiency of every machine in our catalog.' },
+    { name: 'Reshu Ranjan', role: 'CEO', desc: 'With a deep passion for empowering small businesses, Reshu leads Rudra Traders to new heights.', mediaType: 'video', media: '/ceo-video.mp4' },
+    { name: 'Manas Kumar', role: 'Logistics Head', desc: 'Our logistics expert ensuring every order is dispatched on time and delivered safely across India.', mediaType: 'icon' },
+    { name: 'Ayush Sharma', role: 'Technical Head', desc: 'Industry expert who verifies quality, capacity, and efficiency of every machine in our catalog.', mediaType: 'image', media: '/ayush-sharma.jpg' },
   ];
 
   return (
@@ -83,9 +83,19 @@ const AboutPage = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {team.map((t, i) => (
             <div key={i} className="glass-card p-8 rounded-2xl text-center">
-              <div className="w-20 h-20 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border border-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                <Users className="w-8 h-8 text-yellow-400" />
-              </div>
+              {t.mediaType === 'video' ? (
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full overflow-hidden border-2 border-yellow-500/30">
+                  <video src={t.media} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                </div>
+              ) : t.mediaType === 'image' ? (
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full overflow-hidden border-2 border-yellow-500/30">
+                  <img src={t.media} alt={t.name} className="w-full h-full object-cover" />
+                </div>
+              ) : (
+                <div className="w-24 h-24 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-2 border-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Users className="w-10 h-10 text-yellow-400" />
+                </div>
+              )}
               <h3 className="font-bold text-white text-xl mb-1">{t.name}</h3>
               <div className="text-yellow-400 text-sm font-semibold mb-4">{t.role}</div>
               <p className="text-gray-400 text-sm leading-relaxed">{t.desc}</p>
