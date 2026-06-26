@@ -84,7 +84,7 @@ const AboutPage = () => {
           {team.map((t, i) => (
             <div key={i} className="glass-card p-8 rounded-2xl text-center group transition-all duration-500 hover:shadow-[0_0_40px_rgba(212,175,55,0.2)] hover:-translate-y-2 relative z-10 hover:z-50">
               {t.mediaType === 'video' ? (
-                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-all duration-500 relative cursor-pointer group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
+                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-all duration-500 relative cursor-pointer group-hover:scale-110 md:group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
                   <video 
                     src={t.media} 
                     autoPlay 
@@ -101,11 +101,11 @@ const AboutPage = () => {
                   </div>
                 </div>
               ) : t.mediaType === 'image' ? (
-                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-all duration-500 group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
+                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-all duration-500 group-hover:scale-110 md:group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
                   <img src={t.media} alt={t.name} className="w-full h-full object-cover transition-transform duration-500" />
                 </div>
               ) : (
-                <div className="w-40 h-40 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-4 border-yellow-500/20 group-hover:border-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 transition-all duration-500 group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
+                <div className="w-40 h-40 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-4 border-yellow-500/20 group-hover:border-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 transition-all duration-500 group-hover:scale-110 md:group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
                   <Users className="w-16 h-16 text-yellow-400 transition-transform duration-500" />
                 </div>
               )}
