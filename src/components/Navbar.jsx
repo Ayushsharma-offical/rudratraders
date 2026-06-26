@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Menu, X, ChevronDown, Search } from 'lucide-react';
+import { ShoppingCart, Menu, X, ChevronDown, Search, Lock } from 'lucide-react';
 
 const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -33,7 +33,7 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'navbar-glass shadow-2xl' : 'bg-transparent'}`}>
+    <nav className={`sticky top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'navbar-glass shadow-2xl' : 'bg-[#0a0f0f] border-b border-yellow-500/10'}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
@@ -74,6 +74,13 @@ const Navbar = () => {
                   {cartCount}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => navigate('/admin')}
+              className="p-2 text-gray-500 hover:text-yellow-400 transition-colors hidden md:block"
+              title="Admin Portal"
+            >
+              <Lock className="w-4 h-4" />
             </button>
             <button
               onClick={() => navigate('/cart')}

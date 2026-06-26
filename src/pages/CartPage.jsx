@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus } from 'lucide-react';
+import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn } from 'lucide-react';
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
+import { auth, provider, db } from '../firebase';
+import { signInWithPopup } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 let refCounter = parseInt(localStorage.getItem('rudra_ref') || '65');
 
@@ -14,13 +17,37 @@ const CartPage = () => {
     name: '', careOf: '', address: '', pincode: '', phone: '', projectType: ''
   });
   const [errors, setErrors] = useState({});
+  const [user, setUser] = useState(null);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
 
   useEffect(() => {
     setCart(getCart());
     const handler = () => setCart(getCart());
     window.addEventListener('cart_updated', handler);
-    return () => window.removeEventListener('cart_updated', handler);
+    
+    const unsub = auth.onAuthStateChanged(u => {
+      setUser(u);
+      if (u && !client.name) {
+        setClient(prev => ({ ...prev, name: u.displayName || '' }));
+      }
+    });
+
+    return () => {
+      window.removeEventListener('cart_updated', handler);
+      unsub();
+    };
   }, []);
+
+  const handleGoogleLogin = async () => {
+    setLoadingGoogle(true);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
 
   const handleRemove = (id) => { removeFromCart(id); setCart(getCart()); };
   const handleQty = (id, qty) => { updateQty(id, qty); setCart(getCart()); };
@@ -38,11 +65,28 @@ const CartPage = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!validate()) return;
     refCounter++;
     localStorage.setItem('rudra_ref', refCounter);
     const items = cart.map(i => ({ description: i.name, quantity: i.quantity, rate: i.price }));
+    
+    // Save to Firestore Database
+    try {
+      await addDoc(collection(db, 'quotes'), {
+        userId: user ? user.uid : 'guest',
+        clientDetails: client,
+        items: items,
+        refNo: refCounter.toString(),
+        subtotal,
+        gst,
+        total,
+        createdAt: serverTimestamp()
+      });
+    } catch (err) {
+      console.error("Error saving quote to database:", err);
+    }
+
     generateQuotation(client, items, refCounter.toString());
     setStep(3);
   };
@@ -55,9 +99,9 @@ const CartPage = () => {
         </div>
         <h2 className="text-3xl font-black text-white mb-3">Quotation Ready!</h2>
         <p className="text-gray-400 mb-2">Your PDF quotation has been downloaded successfully.</p>
-        <p className="text-gray-500 text-sm mb-8">Present this document to proceed with your order. Our team will contact you within 24 hours.</p>
+        <p className="text-gray-500 text-sm mb-8">Your quote has been saved to our database. Our team will contact you within 24 hours.</p>
         <div className="space-y-3">
-          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name:'',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); }} className="btn-gold w-full justify-center">
+          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); }} className="btn-gold w-full justify-center">
             Start New Quote
           </button>
           <button onClick={() => navigate('/products')} className="btn-outline-gold w-full justify-center">
@@ -69,7 +113,7 @@ const CartPage = () => {
   );
 
   return (
-    <div className="pt-28 min-h-screen max-w-7xl mx-auto px-6 pb-20">
+    <div className="pt-10 min-h-screen max-w-7xl mx-auto px-6 pb-20">
       {/* Header */}
       <div className="flex items-center gap-4 mb-10">
         <button onClick={() => navigate(-1)} className="p-2 hover:text-yellow-400 transition-colors text-gray-400">
@@ -175,46 +219,75 @@ const CartPage = () => {
 
       {step === 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form */}
+          {/* Form or Google Login */}
           <div className="lg:col-span-2 glass-card p-8 rounded-2xl">
-            <h2 className="text-xl font-bold text-white mb-8">Your Details</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2 font-medium">Full Name *</label>
-                <input type="text" className={`input-dark ${errors.name ? 'border-red-500' : ''}`} placeholder="Your full name" value={client.name} onChange={e => setClient({...client, name: e.target.value})} />
-                {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+            {!user ? (
+              <div className="text-center py-16">
+                <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <LogIn className="w-8 h-8 text-yellow-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-3">Sign In to Continue</h2>
+                <p className="text-gray-400 mb-8 max-w-md mx-auto">Please sign in with your Google account so we can securely store your quotation details and follow up with you.</p>
+                <button 
+                  onClick={handleGoogleLogin} 
+                  disabled={loadingGoogle}
+                  className="bg-white text-gray-900 font-bold px-6 py-3 rounded-lg flex items-center justify-center gap-3 mx-auto hover:bg-gray-100 transition-colors"
+                >
+                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+                  {loadingGoogle ? 'Signing in...' : 'Sign in with Google'}
+                </button>
+                <button onClick={() => setStep(1)} className="mt-8 text-sm text-gray-500 hover:text-white transition-colors">
+                  &larr; Back to Cart
+                </button>
               </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2 font-medium">S/O or Care Of</label>
-                <input type="text" className="input-dark" placeholder="Father's / Guardian's name" value={client.careOf} onChange={e => setClient({...client, careOf: e.target.value})} />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm text-gray-400 mb-2 font-medium">Full Address *</label>
-                <textarea className={`input-dark resize-none ${errors.address ? 'border-red-500' : ''}`} rows="3" placeholder="Village, District, State..." value={client.address} onChange={e => setClient({...client, address: e.target.value})}></textarea>
-                {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2 font-medium">PIN Code</label>
-                <input type="text" className="input-dark" placeholder="PIN Code" value={client.pincode} onChange={e => setClient({...client, pincode: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm text-gray-400 mb-2 font-medium">Mobile Number *</label>
-                <input type="tel" className={`input-dark ${errors.phone ? 'border-red-500' : ''}`} placeholder="10-digit mobile number" value={client.phone} onChange={e => setClient({...client, phone: e.target.value})} />
-                {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm text-gray-400 mb-2 font-medium">Project / Unit Name</label>
-                <input type="text" className="input-dark" placeholder="e.g. Bakery Processing Unit, Poultry Farm Unit" value={client.projectType} onChange={e => setClient({...client, projectType: e.target.value})} />
-              </div>
-            </div>
-            <div className="flex gap-4 mt-8">
-              <button onClick={() => setStep(1)} className="btn-outline-gold">
-                <ArrowLeft className="w-4 h-4" /> Back
-              </button>
-              <button onClick={handleGenerate} className="btn-gold flex-1 justify-center">
-                <Download className="w-5 h-5" /> Download Quotation PDF
-              </button>
-            </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-start mb-8">
+                  <h2 className="text-xl font-bold text-white">Your Details</h2>
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500">Signed in as</div>
+                    <div className="text-sm font-semibold gold-text">{user.email}</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2 font-medium">Full Name *</label>
+                    <input type="text" className={`input-dark ${errors.name ? 'border-red-500' : ''}`} placeholder="Your full name" value={client.name} onChange={e => setClient({...client, name: e.target.value})} />
+                    {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2 font-medium">S/O or Care Of</label>
+                    <input type="text" className="input-dark" placeholder="Father's / Guardian's name" value={client.careOf} onChange={e => setClient({...client, careOf: e.target.value})} />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-gray-400 mb-2 font-medium">Full Address *</label>
+                    <textarea className={`input-dark resize-none ${errors.address ? 'border-red-500' : ''}`} rows="3" placeholder="Village, District, State..." value={client.address} onChange={e => setClient({...client, address: e.target.value})}></textarea>
+                    {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2 font-medium">PIN Code</label>
+                    <input type="text" className="input-dark" placeholder="PIN Code" value={client.pincode} onChange={e => setClient({...client, pincode: e.target.value})} />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-400 mb-2 font-medium">Mobile Number *</label>
+                    <input type="tel" className={`input-dark ${errors.phone ? 'border-red-500' : ''}`} placeholder="10-digit mobile number" value={client.phone} onChange={e => setClient({...client, phone: e.target.value})} />
+                    {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm text-gray-400 mb-2 font-medium">Project / Unit Name</label>
+                    <input type="text" className="input-dark" placeholder="e.g. Bakery Processing Unit, Poultry Farm Unit" value={client.projectType} onChange={e => setClient({...client, projectType: e.target.value})} />
+                  </div>
+                </div>
+                <div className="flex gap-4 mt-8">
+                  <button onClick={() => setStep(1)} className="btn-outline-gold">
+                    <ArrowLeft className="w-4 h-4" /> Back
+                  </button>
+                  <button onClick={handleGenerate} className="btn-gold flex-1 justify-center">
+                    <Download className="w-5 h-5" /> Generate & Download Quotation
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Summary */}
