@@ -80,27 +80,42 @@ const AboutPage = () => {
           <div className="badge-gold inline-block mb-4">The Team</div>
           <h2 className="text-4xl font-black text-white">People Behind <span className="gold-text">Rudra Traders</span></h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           {team.map((t, i) => (
-            <div key={i} className="glass-card p-8 rounded-2xl text-center">
+            <div key={i} className="glass-card p-8 rounded-2xl text-center group transition-all duration-300 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] hover:-translate-y-2">
               {t.mediaType === 'video' ? (
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full overflow-hidden border-2 border-yellow-500/30">
-                  <video src={t.media} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-colors duration-300 relative cursor-pointer">
+                  <video 
+                    src={t.media} 
+                    autoPlay 
+                    loop 
+                    muted 
+                    playsInline 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                    onMouseEnter={(e) => { e.target.muted = false; e.target.volume = 1; }}
+                    onMouseLeave={(e) => { e.target.muted = true; }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <span className="text-white text-xs font-bold bg-black/60 px-2 py-1 rounded-full">🔊 Sound On</span>
+                  </div>
                 </div>
               ) : t.mediaType === 'image' ? (
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full overflow-hidden border-2 border-yellow-500/30">
-                  <img src={t.media} alt={t.name} className="w-full h-full object-cover" />
+                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-colors duration-300">
+                  <img src={t.media} alt={t.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 </div>
               ) : (
-                <div className="w-24 h-24 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-2 border-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Users className="w-10 h-10 text-yellow-400" />
+                <div className="w-40 h-40 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-4 border-yellow-500/20 group-hover:border-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 transition-colors duration-300">
+                  <Users className="w-16 h-16 text-yellow-400 transition-transform duration-500 group-hover:scale-110" />
                 </div>
               )}
-              <h3 className="font-bold text-white text-xl mb-1">{t.name}</h3>
-              <div className="text-yellow-400 text-sm font-semibold mb-4">{t.role}</div>
+              <h3 className="font-bold text-white text-2xl mb-1">{t.name}</h3>
+              <div className="text-yellow-400 text-md font-semibold mb-4">{t.role}</div>
               <p className="text-gray-400 text-sm leading-relaxed">{t.desc}</p>
             </div>
           ))}
+        </div>
+        <div className="text-center">
+          <p className="text-gray-500 text-sm italic">💡 Tip: Hover over the photos to enlarge them, and hover over the CEO's video to listen to the audio!</p>
         </div>
       </section>
     </div>
