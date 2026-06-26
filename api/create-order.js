@@ -1,10 +1,5 @@
 const Razorpay = require('razorpay');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
-
 module.exports = async (req, res) => {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -20,6 +15,15 @@ module.exports = async (req, res) => {
   }
 
   try {
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+      return res.status(500).json({ error: 'Razorpay API keys are not configured in Vercel' });
+    }
+
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
     const { amount, currency = 'INR', receipt } = req.body;
 
     // Validate amount (minimum 100 paise = ₹1)
