@@ -69,13 +69,25 @@ const CartPage = () => {
     if (!validate()) return;
     refCounter++;
     localStorage.setItem('rudra_ref', refCounter);
-    const items = cart.map(i => ({ description: i.name, quantity: i.quantity, rate: i.price }));
-    
-    // Save to Firestore Database
+    const items = cart.map(i => ({
+      description: String(i.name || 'Machinery Item'),
+      quantity: Number(i.quantity) || 1,
+      rate: Number(i.price) || 0
+    }));
+    const safeClient = {
+      name: client.name || 'Client',
+      careOf: client.careOf || '',
+      address: client.address || '',
+      pincode: client.pincode || '',
+      phone: client.phone || '',
+      projectType: client.projectType || 'Machinery Unit',
+    };
+
+    // Save to Firestore first
     try {
       await addDoc(collection(db, 'quotes'), {
         userId: user ? user.uid : 'guest',
-        clientDetails: client,
+        clientDetails: safeClient,
         items: items,
         refNo: refCounter.toString(),
         subtotal,
@@ -84,10 +96,18 @@ const CartPage = () => {
         createdAt: serverTimestamp()
       });
     } catch (err) {
-      console.error("Error saving quote to database:", err);
+      console.error('Error saving quote to database:', err);
     }
 
-    generateQuotation(client, items, refCounter.toString());
+    // Generate PDF
+    try {
+      generateQuotation(safeClient, items, refCounter.toString());
+    } catch (pdfErr) {
+      console.error('PDF generation error:', pdfErr);
+      alert('There was an error generating the PDF. Please try again.');
+      return;
+    }
+
     setStep(3);
   };
 
