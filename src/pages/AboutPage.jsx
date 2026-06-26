@@ -22,7 +22,7 @@ const AboutPage = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>
             <div className="badge-gold inline-block mb-6">Our Story</div>
-            <h1 className="text-5xl font-black text-white mb-6 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
               Built for India's <span className="gold-text">Entrepreneurs</span>
             </h1>
             <p className="text-gray-400 leading-relaxed mb-6 text-lg">
@@ -58,7 +58,7 @@ const AboutPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <div className="badge-gold inline-block mb-4">Our Values</div>
-            <h2 className="text-4xl font-black text-white">What Drives Us</h2>
+            <h2 className="text-3xl md:text-4xl font-black text-white">What Drives Us</h2>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {values.map((v, i) => (
@@ -78,7 +78,7 @@ const AboutPage = () => {
       <section className="py-20 max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
           <div className="badge-gold inline-block mb-4">The Team</div>
-          <h2 className="text-4xl font-black text-white">People Behind <span className="gold-text">Rudra Traders</span></h2>
+          <h2 className="text-3xl md:text-4xl font-black text-white">People Behind <span className="gold-text">Rudra Traders</span></h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           {team.map((t, i) => (

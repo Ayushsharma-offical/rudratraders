@@ -46,7 +46,7 @@ const HomePage = () => {
                 LIVE — Same-day dispatch available in Gaya
               </div>
 
-              <h1 className="text-6xl md:text-7xl lg:text-[5.5rem] font-bold leading-[0.95] tracking-tight mb-8 text-[#eaddcf]" style={{ textShadow: '2px 4px 10px rgba(0,0,0,0.3)' }}>
+              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-[5.5rem] font-bold leading-[0.95] tracking-tight mb-8 text-[#eaddcf]" style={{ textShadow: '2px 4px 10px rgba(0,0,0,0.3)' }}>
                 Bihar's most<br />
                 <span className="font-serif italic coral-text font-normal block py-2">trusted</span>
                 supply<br />
@@ -100,7 +100,7 @@ const HomePage = () => {
       <section className="py-24 max-w-7xl mx-auto px-6">
         <div className="text-center mb-16">
           <div className="badge-gold inline-block mb-4">Top Rated</div>
-          <h2 className="text-4xl font-black text-white mb-4">Featured <span className="gold-text">Machinery</span></h2>
+          <h2 className="text-3xl sm:text-4xl font-black text-white mb-4">Featured <span className="gold-text">Machinery</span></h2>
           <p className="text-gray-400 max-w-2xl mx-auto">Explore our best-selling industrial equipment designed for high efficiency.</p>
         </div>
 

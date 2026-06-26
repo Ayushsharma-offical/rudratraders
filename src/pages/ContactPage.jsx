@@ -7,7 +7,7 @@ const ContactPage = () => {
       {/* Header */}
       <div className="max-w-7xl mx-auto px-6 mb-16 text-center">
         <div className="badge-gold inline-block mb-4">Get In Touch</div>
-        <h1 className="text-5xl font-black text-white mb-4">Contact <span className="gold-text">Us</span></h1>
+        <h1 className="text-4xl md:text-5xl font-black text-white mb-4">Contact <span className="gold-text">Us</span></h1>
         <p className="text-gray-400 max-w-2xl mx-auto text-lg">
           Looking for a specific machine? Want a custom quote? Our team is ready to assist you.
         </p>
