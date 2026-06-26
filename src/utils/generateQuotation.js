@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const numToWords = (num) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
@@ -137,7 +137,7 @@ export const generateQuotation = (clientDetails, items, refNo) => {
     ];
   });
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [['S.No.', 'Description', 'Unit', 'Rate (INR)', 'Amount (INR)']],
     body: tableData,

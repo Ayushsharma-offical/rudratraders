@@ -21,14 +21,15 @@ const AdminLogin = ({ onLogin }) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      onLogin();
-    } catch (err) {
-      setError('Invalid credentials. Please try again.');
-    } finally {
+    setTimeout(() => {
+      if (email === 'admin@rudratraders.com' && password === 'admin123') {
+        localStorage.setItem('rudra_admin', 'true');
+        onLogin({ email });
+      } else {
+        setError('Invalid credentials. Please try again.');
+      }
       setLoading(false);
-    }
+    }, 800);
   };
 
   return (
@@ -326,15 +327,15 @@ const AdminPage = () => {
   const [active, setActive] = useState('dashboard');
 
   useEffect(() => {
-    const unsub = auth.onAuthStateChanged(u => {
-      setUser(u);
-      setLoading(false);
-    });
-    return unsub;
+    const isAdmin = localStorage.getItem('rudra_admin') === 'true';
+    if (isAdmin) {
+      setUser({ email: 'admin@rudratraders.com' });
+    }
+    setLoading(false);
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
+    localStorage.removeItem('rudra_admin');
     setUser(null);
   };
 
