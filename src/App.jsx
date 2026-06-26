@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -53,10 +53,40 @@ const AppShell = () => {
   );
 };
 
-const App = () => (
-  <BrowserRouter>
-    <AppShell />
-  </BrowserRouter>
-);
+const IntroScreen = ({ onComplete }) => {
+  return (
+    <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+      <video 
+        autoPlay 
+        muted 
+        playsInline 
+        onEnded={onComplete}
+        className="w-full h-full object-contain"
+      >
+        <source src="/intro.mp4" type="video/mp4" />
+      </video>
+      <button 
+        onClick={onComplete} 
+        className="absolute bottom-10 right-10 text-white/50 hover:text-white transition-colors text-sm"
+      >
+        Skip Intro &rarr;
+      </button>
+    </div>
+  );
+};
+
+const App = () => {
+  const [showIntro, setShowIntro] = useState(true);
+
+  return (
+    <BrowserRouter>
+      {showIntro ? (
+        <IntroScreen onComplete={() => setShowIntro(false)} />
+      ) : (
+        <AppShell />
+      )}
+    </BrowserRouter>
+  );
+};
 
 export default App;
