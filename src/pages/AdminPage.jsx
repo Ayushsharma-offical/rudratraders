@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   LayoutDashboard, Package, FileText, LogOut, TrendingUp,
   Users, DollarSign, Plus, X, CheckCircle2, Trash2, Download,
@@ -178,30 +177,35 @@ const DashboardOverview = ({ machinery, loading }) => {
 };
 
 // ============================================================
-// IMAGE PASTE / UPLOAD HELPER
+// IMAGE PASTE / UPLOAD HELPER (base64 - no storage needed)
 // ============================================================
 const ImageInput = ({ value, onChange }) => {
-  const [uploading, setUploading] = useState(false);
+  const [converting, setConverting] = useState(false);
   const [preview, setPreview] = useState(value || '');
   const pasteRef = useRef(null);
 
-  const uploadFile = async (file) => {
+  const processFile = (file) => {
     if (!file || !file.type.startsWith('image/')) return;
-    setUploading(true);
-    try {
-      const storageRef = ref(storage, `machinery/${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const url = await getDownloadURL(storageRef);
-      setPreview(url);
-      onChange(url);
-    } catch (err) {
-      console.error('Upload failed:', err);
-      // Fallback: create object URL
-      const url = URL.createObjectURL(file);
-      setPreview(url);
-      onChange(url);
-    }
-    setUploading(false);
+    setConverting(true);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      // Resize image to max 800px to keep Firestore doc small
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 800;
+        const canvas = document.createElement('canvas');
+        let w = img.width, h = img.height;
+        if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        setPreview(dataUrl);
+        onChange(dataUrl);
+        setConverting(false);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handlePaste = (e) => {
@@ -209,16 +213,23 @@ const ImageInput = ({ value, onChange }) => {
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith('image/')) {
-        const file = items[i].getAsFile();
-        uploadFile(file);
+        processFile(items[i].getAsFile());
         break;
+      }
+      // Also handle pasted image URLs
+      if (items[i].type === 'text/plain') {
+        items[i].getAsString(str => {
+          if (str.startsWith('http') && /\.(jpg|jpeg|png|webp|gif)/i.test(str)) {
+            setPreview(str); onChange(str);
+          }
+        });
       }
     }
   };
 
   const handleFileInput = (e) => {
     const file = e.target.files?.[0];
-    if (file) uploadFile(file);
+    if (file) processFile(file);
   };
 
   return (
@@ -227,14 +238,14 @@ const ImageInput = ({ value, onChange }) => {
         ref={pasteRef}
         onPaste={handlePaste}
         tabIndex={0}
-        className="relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer focus:outline-none transition-all"
+        className="relative border-2 border-dashed rounded-xl p-4 text-center cursor-pointer focus:outline-none focus:border-yellow-400/60 transition-all outline-none"
         style={{ borderColor: 'rgba(212,175,55,0.3)', background: 'rgba(0,0,0,0.3)' }}
         onClick={() => pasteRef.current?.focus()}
       >
-        {uploading ? (
-          <div className="py-6 text-yellow-400 animate-pulse flex flex-col items-center gap-2">
-            <Upload className="w-6 h-6" />
-            <span className="text-sm">Uploading...</span>
+        {converting ? (
+          <div className="py-6 text-yellow-400 flex flex-col items-center gap-2">
+            <div className="w-6 h-6 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm">Processing image...</span>
           </div>
         ) : preview ? (
           <div className="relative">
@@ -242,7 +253,7 @@ const ImageInput = ({ value, onChange }) => {
             <button
               type="button"
               onClick={e => { e.stopPropagation(); setPreview(''); onChange(''); }}
-              className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white"
+              className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
             >
               <X className="w-3 h-3" />
             </button>
@@ -250,24 +261,25 @@ const ImageInput = ({ value, onChange }) => {
         ) : (
           <div className="py-6 flex flex-col items-center gap-2">
             <ImageIcon className="w-8 h-8 text-gray-500" />
-            <p className="text-sm text-gray-400">Press <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-yellow-400 text-xs font-mono">Ctrl+V</kbd> to paste image</p>
-            <p className="text-xs text-gray-600">or click below to upload</p>
+            <p className="text-sm text-gray-300">Click here, then press <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-yellow-400 text-xs font-mono">Ctrl+V</kbd></p>
+            <p className="text-xs text-gray-500">Paste any copied image instantly • No upload needed</p>
           </div>
         )}
       </div>
-      <label className="mt-2 flex items-center gap-2 cursor-pointer btn-outline-gold text-xs w-full justify-center">
-        <Upload className="w-3 h-3" /> Choose File
+      <label className="mt-2 flex items-center gap-2 cursor-pointer btn-outline-gold text-xs w-full justify-center py-2">
+        <Upload className="w-3 h-3" /> Choose from Computer
         <input type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
       </label>
-      {value && !preview && (
+      <div className="mt-2">
         <input
           type="text"
-          className="input-dark mt-2 text-sm"
-          placeholder="Or paste image URL..."
-          value={value}
-          onChange={e => { onChange(e.target.value); setPreview(e.target.value); }}
+          className="input-dark text-sm"
+          style={{ background: 'rgba(0,0,0,0.3)' }}
+          placeholder="Or paste image URL (https://...)"
+          value={preview.startsWith('data:') ? '' : preview}
+          onChange={e => { setPreview(e.target.value); onChange(e.target.value); }}
         />
-      )}
+      </div>
     </div>
   );
 };

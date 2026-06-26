@@ -3,64 +3,34 @@ import { db } from '../firebase';
 import { collection, getDocs, addDoc, query } from 'firebase/firestore';
 import { MACHINERY as STATIC_MACHINERY } from '../data/machinery';
 
-// Module-level cache so data persists across page navigations
+// Module-level cache — persists across page navigations (zero reload time)
 let cachedMachinery = null;
-let isFetching = false;
-const listeners = [];
+let fetchPromise = null;
 
-const notifyListeners = (data) => {
-  listeners.forEach(fn => fn(data));
-};
+const buildFromStatic = () =>
+  STATIC_MACHINERY.map(m => ({ ...m, id: String(m.id), stockQuantity: m.stockQuantity ?? 10 }));
 
-const seedDatabase = async () => {
+const loadFromFirestore = async () => {
   try {
-    const entries = STATIC_MACHINERY.map(m => ({
-      ...m,
-      stockQuantity: 10,
-      id: undefined,
-    }));
-    const promises = entries.map(m => {
-      const { id, ...rest } = m;
-      return addDoc(collection(db, 'machinery'), rest);
-    });
-    await Promise.all(promises);
-    console.log('Database seeded successfully');
-    return true;
-  } catch (err) {
-    console.error('Seeding failed:', err);
-    return false;
-  }
-};
-
-const fetchFromDB = async () => {
-  if (isFetching) return;
-  isFetching = true;
-  try {
-    const q = query(collection(db, 'machinery'));
-    const snap = await getDocs(q);
-    let data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
-    // Auto-seed if Firestore is empty
-    if (data.length === 0) {
-      await seedDatabase();
-      const snap2 = await getDocs(q);
-      data = snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snap = await getDocs(query(collection(db, 'machinery')));
+    if (snap.empty) {
+      // Seed Firestore with static data
+      const promises = STATIC_MACHINERY.map(({ id, ...rest }) =>
+        addDoc(collection(db, 'machinery'), { ...rest, stockQuantity: 10 })
+      );
+      const refs = await Promise.all(promises);
+      return refs.map((r, i) => ({ ...STATIC_MACHINERY[i], id: r.id, stockQuantity: 10 }));
     }
-
-    cachedMachinery = data;
-    notifyListeners(data);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (err) {
-    console.error('Error fetching machinery:', err);
-    // Fallback to static data on error
-    cachedMachinery = STATIC_MACHINERY.map(m => ({ ...m, id: String(m.id), stockQuantity: 10 }));
-    notifyListeners(cachedMachinery);
-  } finally {
-    isFetching = false;
+    console.warn('Firestore unavailable, using static data:', err.message);
+    return null; // null = use static
   }
 };
 
 export const useMachinery = () => {
-  const [machinery, setMachinery] = useState(cachedMachinery || []);
+  // Always start with static data for instant display
+  const [machinery, setMachinery] = useState(cachedMachinery || buildFromStatic());
   const [loading, setLoading] = useState(!cachedMachinery);
 
   useEffect(() => {
@@ -70,28 +40,36 @@ export const useMachinery = () => {
       return;
     }
 
-    const handler = (data) => {
-      setMachinery(data);
-      setLoading(false);
-    };
-    listeners.push(handler);
-
-    if (!isFetching) {
-      fetchFromDB();
+    if (!fetchPromise) {
+      fetchPromise = loadFromFirestore();
     }
 
-    return () => {
-      const idx = listeners.indexOf(handler);
-      if (idx > -1) listeners.splice(idx, 1);
-    };
+    fetchPromise.then(data => {
+      if (data) {
+        cachedMachinery = data;
+        setMachinery(data);
+      } else {
+        // Firestore failed - use static, still functional
+        cachedMachinery = buildFromStatic();
+        setMachinery(cachedMachinery);
+      }
+      setLoading(false);
+    });
   }, []);
 
-  const refetch = async () => {
+  const refetch = () => {
     cachedMachinery = null;
+    fetchPromise = null;
+    const fresh = buildFromStatic();
+    setMachinery(fresh);
     setLoading(true);
-    await fetchFromDB();
-    setMachinery(cachedMachinery || []);
-    setLoading(false);
+
+    fetchPromise = loadFromFirestore();
+    fetchPromise.then(data => {
+      cachedMachinery = data || buildFromStatic();
+      setMachinery(cachedMachinery);
+      setLoading(false);
+    });
   };
 
   return { machinery, loading, refetch };
