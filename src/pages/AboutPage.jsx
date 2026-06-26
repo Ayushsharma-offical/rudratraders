@@ -82,30 +82,31 @@ const AboutPage = () => {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           {team.map((t, i) => (
-            <div key={i} className="glass-card p-8 rounded-2xl text-center group transition-all duration-300 hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] hover:-translate-y-2">
+            <div key={i} className="glass-card p-8 rounded-2xl text-center group transition-all duration-500 hover:shadow-[0_0_40px_rgba(212,175,55,0.2)] hover:-translate-y-2 relative z-10 hover:z-50">
               {t.mediaType === 'video' ? (
-                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-colors duration-300 relative cursor-pointer">
+                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-all duration-500 relative cursor-pointer group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
                   <video 
                     src={t.media} 
                     autoPlay 
                     loop 
                     muted 
                     playsInline 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                    className="w-full h-full object-cover transition-transform duration-500" 
                     onMouseEnter={(e) => { e.target.muted = false; e.target.volume = 1; }}
                     onMouseLeave={(e) => { e.target.muted = true; }}
+                    onTimeUpdate={(e) => { if (e.target.currentTime >= 5) { e.target.currentTime = 0; } }}
                   />
-                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                    <span className="text-white text-xs font-bold bg-black/60 px-2 py-1 rounded-full">🔊 Sound On</span>
+                  <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <span className="text-white text-[8px] font-bold bg-black/60 px-2 py-1 rounded-full mb-1">🔊 Sound On</span>
                   </div>
                 </div>
               ) : t.mediaType === 'image' ? (
-                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-colors duration-300">
-                  <img src={t.media} alt={t.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-yellow-500/20 group-hover:border-yellow-400 transition-all duration-500 group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
+                  <img src={t.media} alt={t.name} className="w-full h-full object-cover transition-transform duration-500" />
                 </div>
               ) : (
-                <div className="w-40 h-40 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-4 border-yellow-500/20 group-hover:border-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 transition-colors duration-300">
-                  <Users className="w-16 h-16 text-yellow-400 transition-transform duration-500 group-hover:scale-110" />
+                <div className="w-40 h-40 bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-4 border-yellow-500/20 group-hover:border-yellow-400 rounded-full flex items-center justify-center mx-auto mb-6 transition-all duration-500 group-hover:scale-[2.5] group-hover:shadow-2xl z-20">
+                  <Users className="w-16 h-16 text-yellow-400 transition-transform duration-500" />
                 </div>
               )}
               <h3 className="font-bold text-white text-2xl mb-1">{t.name}</h3>
