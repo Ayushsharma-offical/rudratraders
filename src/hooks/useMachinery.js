@@ -1,72 +1,73 @@
 import { useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { collection, getDocs, addDoc, query } from 'firebase/firestore';
+import { rtdb } from '../firebase';
+import { ref, get, set } from 'firebase/database';
 import { MACHINERY as STATIC_MACHINERY } from '../data/machinery';
 
-// Module-level cache — persists across page navigations (zero reload time)
+// Module-level cache for instant navigation
 let cachedMachinery = null;
-let fetchPromise = null;
 
 const buildFromStatic = () =>
   STATIC_MACHINERY.map(m => ({ ...m, id: String(m.id), stockQuantity: m.stockQuantity ?? 10 }));
 
-const loadFromFirestore = async () => {
+// Convert RTDB object to array
+const objToArray = (obj) => {
+  if (!obj) return [];
+  return Object.keys(obj).map(key => ({ ...obj[key], id: key }));
+};
+
+const loadFromRTDB = async () => {
   try {
-    const snap = await getDocs(query(collection(db, 'machinery')));
-    if (snap.empty) {
-      // Seed Firestore with static data
-      const promises = STATIC_MACHINERY.map(({ id, ...rest }) =>
-        addDoc(collection(db, 'machinery'), { ...rest, stockQuantity: 10 })
-      );
-      const refs = await Promise.all(promises);
-      return refs.map((r, i) => ({ ...STATIC_MACHINERY[i], id: r.id, stockQuantity: 10 }));
+    const snapshot = await get(ref(rtdb, 'machinery'));
+    if (!snapshot.exists()) {
+      // Seed the database with static data
+      const seedData = {};
+      STATIC_MACHINERY.forEach(m => {
+        const key = `machine_${m.id}`;
+        const { id, ...rest } = m;
+        seedData[key] = { ...rest, stockQuantity: 10 };
+      });
+      await set(ref(rtdb, 'machinery'), seedData);
+      return Object.keys(seedData).map(key => ({ ...seedData[key], id: key }));
     }
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return objToArray(snapshot.val());
   } catch (err) {
-    console.warn('Firestore unavailable, using static data:', err.message);
-    return null; // null = use static
+    console.warn('RTDB error, using static data:', err.message);
+    return null;
   }
 };
 
 export const useMachinery = () => {
-  // Always start with static data for instant display
   const [machinery, setMachinery] = useState(cachedMachinery || buildFromStatic());
-  const [loading, setLoading] = useState(!cachedMachinery);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (cachedMachinery) {
       setMachinery(cachedMachinery);
-      setLoading(false);
       return;
     }
 
-    if (!fetchPromise) {
-      fetchPromise = loadFromFirestore();
-    }
-
-    fetchPromise.then(data => {
-      if (data) {
+    let cancelled = false;
+    loadFromRTDB().then(data => {
+      if (cancelled) return;
+      if (data && data.length > 0) {
         cachedMachinery = data;
         setMachinery(data);
       } else {
-        // Firestore failed - use static, still functional
         cachedMachinery = buildFromStatic();
         setMachinery(cachedMachinery);
       }
       setLoading(false);
     });
+
+    return () => { cancelled = true; };
   }, []);
 
   const refetch = () => {
     cachedMachinery = null;
-    fetchPromise = null;
-    const fresh = buildFromStatic();
-    setMachinery(fresh);
+    setMachinery(buildFromStatic());
     setLoading(true);
-
-    fetchPromise = loadFromFirestore();
-    fetchPromise.then(data => {
-      cachedMachinery = data || buildFromStatic();
+    loadFromRTDB().then(data => {
+      cachedMachinery = data && data.length > 0 ? data : buildFromStatic();
       setMachinery(cachedMachinery);
       setLoading(false);
     });

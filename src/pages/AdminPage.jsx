@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../firebase';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, query, orderBy } from 'firebase/firestore';
+import { rtdb } from '../firebase';
+import { ref, get, push, update, remove } from 'firebase/database';
 import {
   LayoutDashboard, Package, FileText, LogOut, TrendingUp,
   Users, DollarSign, Plus, X, CheckCircle2, Trash2, Download,
   Save, Upload, ImageIcon
 } from 'lucide-react';
 import { useMachinery } from '../hooks/useMachinery';
-import { MACHINERY as STATIC_MACHINERY, CATEGORIES } from '../data/machinery';
+import { CATEGORIES } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
 
 // ============================================================
@@ -119,8 +119,8 @@ const Sidebar = ({ active, setActive, onLogout }) => {
 // DASHBOARD
 // ============================================================
 const DashboardOverview = ({ machinery, loading }) => {
-  const inStock = machinery.filter(m => (m.stockQuantity ?? (m.inStock ? 1 : 0)) > 0).length;
-  const avgPrice = machinery.length ? Math.round(machinery.reduce((a, m) => a + Number(m.price), 0) / machinery.length) : 0;
+  const inStock = machinery.filter(m => (m.stockQuantity ?? 10) > 0).length;
+  const avgPrice = machinery.length ? Math.round(machinery.reduce((a, m) => a + Number(m.price || 0), 0) / machinery.length) : 0;
   const stats = [
     { label: 'Total Products', value: machinery.length, icon: Package, color: 'text-blue-400', bg: 'bg-blue-500/10' },
     { label: 'In Stock', value: inStock, icon: TrendingUp, color: 'text-green-400', bg: 'bg-green-500/10' },
@@ -153,20 +153,23 @@ const DashboardOverview = ({ machinery, loading }) => {
             </thead>
             <tbody>
               {loading
-                ? <tr><td colSpan="5" className="text-center py-8 text-gray-500 animate-pulse">Loading from database...</td></tr>
-                : machinery.map(m => (
-                  <tr key={m.id}>
-                    <td className="text-white font-medium">{m.name}</td>
-                    <td className="text-gray-400">{m.category}</td>
-                    <td className="text-yellow-400 font-bold">₹{Number(m.price).toLocaleString()}</td>
-                    <td className="text-white font-bold">{m.stockQuantity ?? (m.inStock ? '10+' : '0')}</td>
-                    <td>
-                      <span className={`px-2 py-1 rounded-full text-xs font-bold ${(m.stockQuantity ?? (m.inStock ? 1 : 0)) > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                        {(m.stockQuantity ?? (m.inStock ? 1 : 0)) > 0 ? 'In Stock' : 'Out of Stock'}
-                      </span>
-                    </td>
-                  </tr>
-                ))
+                ? <tr><td colSpan="5" className="text-center py-8 text-gray-500 animate-pulse">Loading...</td></tr>
+                : machinery.map(m => {
+                  const qty = m.stockQuantity ?? 10;
+                  return (
+                    <tr key={m.id}>
+                      <td className="text-white font-medium">{m.name}</td>
+                      <td className="text-gray-400">{m.category}</td>
+                      <td className="text-yellow-400 font-bold">₹{Number(m.price || 0).toLocaleString()}</td>
+                      <td className="text-white font-bold">{qty}</td>
+                      <td>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${qty > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {qty > 0 ? 'In Stock' : 'Out of Stock'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               }
             </tbody>
           </table>
@@ -177,7 +180,7 @@ const DashboardOverview = ({ machinery, loading }) => {
 };
 
 // ============================================================
-// IMAGE PASTE / UPLOAD HELPER (base64 - no storage needed)
+// IMAGE INPUT (base64, no storage needed)
 // ============================================================
 const ImageInput = ({ value, onChange }) => {
   const [converting, setConverting] = useState(false);
@@ -189,16 +192,15 @@ const ImageInput = ({ value, onChange }) => {
     setConverting(true);
     const reader = new FileReader();
     reader.onload = (e) => {
-      // Resize image to max 800px to keep Firestore doc small
       const img = new Image();
       img.onload = () => {
-        const MAX = 800;
+        const MAX = 600;
         const canvas = document.createElement('canvas');
         let w = img.width, h = img.height;
         if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
         setPreview(dataUrl);
         onChange(dataUrl);
         setConverting(false);
@@ -214,22 +216,14 @@ const ImageInput = ({ value, onChange }) => {
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith('image/')) {
         processFile(items[i].getAsFile());
-        break;
+        return;
       }
-      // Also handle pasted image URLs
       if (items[i].type === 'text/plain') {
         items[i].getAsString(str => {
-          if (str.startsWith('http') && /\.(jpg|jpeg|png|webp|gif)/i.test(str)) {
-            setPreview(str); onChange(str);
-          }
+          if (str.startsWith('http')) { setPreview(str); onChange(str); }
         });
       }
     }
-  };
-
-  const handleFileInput = (e) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
   };
 
   return (
@@ -245,47 +239,39 @@ const ImageInput = ({ value, onChange }) => {
         {converting ? (
           <div className="py-6 text-yellow-400 flex flex-col items-center gap-2">
             <div className="w-6 h-6 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm">Processing image...</span>
+            <span className="text-sm">Processing...</span>
           </div>
         ) : preview ? (
           <div className="relative">
             <img src={preview} alt="preview" className="w-full h-32 object-cover rounded-lg" />
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); setPreview(''); onChange(''); }}
-              className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors"
-            >
+            <button type="button" onClick={e => { e.stopPropagation(); setPreview(''); onChange(''); }}
+              className="absolute top-1 right-1 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors">
               <X className="w-3 h-3" />
             </button>
           </div>
         ) : (
           <div className="py-6 flex flex-col items-center gap-2">
             <ImageIcon className="w-8 h-8 text-gray-500" />
-            <p className="text-sm text-gray-300">Click here, then press <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-yellow-400 text-xs font-mono">Ctrl+V</kbd></p>
-            <p className="text-xs text-gray-500">Paste any copied image instantly • No upload needed</p>
+            <p className="text-sm text-gray-300">Click here then <kbd className="bg-white/10 px-1.5 py-0.5 rounded text-yellow-400 text-xs font-mono">Ctrl+V</kbd> to paste</p>
+            <p className="text-xs text-gray-500">Or use the button below</p>
           </div>
         )}
       </div>
       <label className="mt-2 flex items-center gap-2 cursor-pointer btn-outline-gold text-xs w-full justify-center py-2">
         <Upload className="w-3 h-3" /> Choose from Computer
-        <input type="file" accept="image/*" className="hidden" onChange={handleFileInput} />
+        <input type="file" accept="image/*" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) processFile(f); }} />
       </label>
-      <div className="mt-2">
-        <input
-          type="text"
-          className="input-dark text-sm"
-          style={{ background: 'rgba(0,0,0,0.3)' }}
-          placeholder="Or paste image URL (https://...)"
-          value={preview.startsWith('data:') ? '' : preview}
-          onChange={e => { setPreview(e.target.value); onChange(e.target.value); }}
-        />
-      </div>
+      <input type="text" className="input-dark text-sm mt-2" style={{ background: 'rgba(0,0,0,0.3)' }}
+        placeholder="Or paste image URL (https://...)"
+        value={preview?.startsWith('data:') ? '' : (preview || '')}
+        onChange={e => { setPreview(e.target.value); onChange(e.target.value); }}
+      />
     </div>
   );
 };
 
 // ============================================================
-// CATALOG CRUD
+// CATALOG CRUD (Realtime Database)
 // ============================================================
 const CatalogView = ({ machinery, refetch, loading }) => {
   const [showAdd, setShowAdd] = useState(false);
@@ -296,28 +282,27 @@ const CatalogView = ({ machinery, refetch, loading }) => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!formData.image) { alert('Please add an image first.'); return; }
+    if (!formData.name.trim()) { alert('Please enter machine name.'); return; }
     setSaving(true);
     try {
-      await addDoc(collection(db, 'machinery'), {
+      await push(ref(rtdb, 'machinery'), {
         ...formData,
-        price: Number(formData.price),
-        originalPrice: Number(formData.originalPrice),
-        stockQuantity: Number(formData.stockQuantity),
-        inStock: Number(formData.stockQuantity) > 0,
+        price: Number(formData.price) || 0,
+        originalPrice: Number(formData.originalPrice) || 0,
+        stockQuantity: Number(formData.stockQuantity) || 0,
         rating: 5.0, reviews: 0,
       });
       setShowAdd(false);
       setFormData(blankForm);
       refetch();
-    } catch (err) { console.error(err); }
+    } catch (err) { console.error(err); alert('Failed to save. Check database rules.'); }
     setSaving(false);
   };
 
   const handleStockQty = async (id, qty) => {
     setTogglingId(id);
     try {
-      await updateDoc(doc(db, 'machinery', id), { stockQuantity: qty, inStock: qty > 0 });
+      await update(ref(rtdb, `machinery/${id}`), { stockQuantity: qty });
       refetch();
     } catch (err) { console.error(err); }
     setTogglingId(null);
@@ -325,7 +310,7 @@ const CatalogView = ({ machinery, refetch, loading }) => {
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this machine permanently?')) return;
-    try { await deleteDoc(doc(db, 'machinery', id)); refetch(); }
+    try { await remove(ref(rtdb, `machinery/${id}`)); refetch(); }
     catch (err) { console.error(err); }
   };
 
@@ -337,7 +322,7 @@ const CatalogView = ({ machinery, refetch, loading }) => {
       </div>
       <form onSubmit={handleSave} className="space-y-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Machine Image *</label>
+          <label className="block text-sm text-gray-400 mb-1">Machine Image</label>
           <ImageInput value={formData.image} onChange={url => setFormData({ ...formData, image: url })} />
         </div>
         <div>
@@ -353,7 +338,7 @@ const CatalogView = ({ machinery, refetch, loading }) => {
           </div>
           <div>
             <label className="block text-sm text-gray-400 mb-1">Capacity</label>
-            <input required type="text" className="input-dark" style={{ background: 'rgba(0,0,0,0.3)' }} placeholder="e.g. 100 KG/HR" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: e.target.value })} />
+            <input type="text" className="input-dark" style={{ background: 'rgba(0,0,0,0.3)' }} placeholder="e.g. 100 KG/HR" value={formData.capacity} onChange={e => setFormData({ ...formData, capacity: e.target.value })} />
           </div>
           <div>
             <label className="block text-sm text-gray-400 mb-1">Selling Price (₹) *</label>
@@ -370,7 +355,7 @@ const CatalogView = ({ machinery, refetch, loading }) => {
         </div>
         <div>
           <label className="block text-sm text-gray-400 mb-1">Description</label>
-          <textarea required rows="3" className="input-dark resize-none" style={{ background: 'rgba(0,0,0,0.3)' }} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}></textarea>
+          <textarea rows="3" className="input-dark resize-none" style={{ background: 'rgba(0,0,0,0.3)' }} value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}></textarea>
         </div>
         <button type="submit" disabled={saving} className="btn-gold w-full justify-center mt-4">
           {saving ? 'Saving...' : <><Save className="w-4 h-4" /> Save Machine to Database</>}
@@ -392,42 +377,31 @@ const CatalogView = ({ machinery, refetch, loading }) => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
           {machinery.map(m => {
-            const qty = m.stockQuantity ?? (m.inStock ? 10 : 0);
-            const inStock = qty > 0;
+            const qty = m.stockQuantity ?? 10;
             return (
               <div key={m.id} className="glass-card rounded-2xl overflow-hidden hover-float border border-white/5 flex flex-col">
-                <img src={m.image} alt={m.name} className="w-full h-36 object-cover opacity-80" />
+                {m.image && <img src={m.image} alt={m.name} className="w-full h-36 object-cover opacity-80" />}
+                {!m.image && <div className="w-full h-36 bg-black/40 flex items-center justify-center text-gray-600"><ImageIcon className="w-10 h-10" /></div>}
                 <div className="p-4 flex-1 flex flex-col">
                   <div className="text-xs text-yellow-500/60 font-semibold uppercase mb-1">{m.category}</div>
                   <h3 className="font-bold text-white mb-1 text-sm line-clamp-1">{m.name}</h3>
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-yellow-400 font-black">₹{Number(m.price).toLocaleString()}</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${inStock ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {inStock ? `In Stock (${qty})` : 'Out of Stock'}
+                    <span className="text-yellow-400 font-black">₹{Number(m.price || 0).toLocaleString()}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${qty > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      {qty > 0 ? `In Stock (${qty})` : 'Out of Stock'}
                     </span>
                   </div>
-
-                  {/* Stock Quantity Control */}
                   <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xs text-gray-400">Stock Qty:</span>
-                    <button
-                      onClick={() => handleStockQty(m.id, Math.max(0, qty - 1))}
-                      disabled={togglingId === m.id}
-                      className="w-6 h-6 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-xs transition-all"
-                    >−</button>
+                    <span className="text-xs text-gray-400">Qty:</span>
+                    <button onClick={() => handleStockQty(m.id, Math.max(0, qty - 1))} disabled={togglingId === m.id}
+                      className="w-6 h-6 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-xs transition-all">−</button>
                     <span className="text-white font-bold text-sm w-8 text-center">{qty}</span>
-                    <button
-                      onClick={() => handleStockQty(m.id, qty + 1)}
-                      disabled={togglingId === m.id}
-                      className="w-6 h-6 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-xs transition-all"
-                    >+</button>
+                    <button onClick={() => handleStockQty(m.id, qty + 1)} disabled={togglingId === m.id}
+                      className="w-6 h-6 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-xs transition-all">+</button>
                   </div>
-
-                  <button
-                    onClick={() => handleDelete(m.id)}
-                    className="mt-auto flex items-center justify-center gap-2 w-full py-2 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" /> Delete Machine
+                  <button onClick={() => handleDelete(m.id)}
+                    className="mt-auto flex items-center justify-center gap-2 w-full py-2 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
+                    <Trash2 className="w-3 h-3" /> Delete
                   </button>
                 </div>
               </div>
@@ -459,19 +433,18 @@ const AdminQuotation = () => {
       const refNo = (parseInt(localStorage.getItem('rudra_ref') || '65') + 1).toString();
       localStorage.setItem('rudra_ref', refNo);
       generateQuotation(client, items, refNo);
-      // Save to DB
       try {
-        await addDoc(collection(db, 'quotes'), {
+        await push(ref(rtdb, 'quotes'), {
           clientDetails: client, items, refNo,
           total: items.reduce((a, i) => a + (parseFloat(i.rate) || 0) * (parseInt(i.quantity) || 1), 0) * 1.18,
-          createdAt: serverTimestamp(), source: 'admin',
+          createdAt: new Date().toISOString(), source: 'admin',
         });
       } catch (e) { console.error(e); }
       setGenerated(true);
       setTimeout(() => setGenerated(false), 3000);
     } catch (err) {
-      console.error('PDF generation error:', err);
-      alert('Failed to generate PDF. Please check all fields.');
+      console.error('PDF error:', err);
+      alert('Failed to generate PDF.');
     }
     setGenerating(false);
   };
@@ -491,7 +464,7 @@ const AdminQuotation = () => {
               { label: 'Address *', key: 'address', placeholder: 'Full address', textarea: true },
               { label: 'PIN Code', key: 'pincode', placeholder: 'PIN Code' },
               { label: 'Mobile *', key: 'phone', placeholder: '10-digit mobile' },
-              { label: 'Project / Unit Name', key: 'projectType', placeholder: 'e.g. Bakery Processing Unit' },
+              { label: 'Project Name', key: 'projectType', placeholder: 'e.g. Bakery Processing Unit' },
             ].map(f => (
               <div key={f.key}>
                 <label className="block text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">{f.label}</label>
@@ -548,7 +521,7 @@ const AdminQuotation = () => {
 };
 
 // ============================================================
-// CLIENT REQUESTS
+// CLIENT REQUESTS (Realtime Database)
 // ============================================================
 const ClientRequests = () => {
   const [quotes, setQuotes] = useState([]);
@@ -557,25 +530,20 @@ const ClientRequests = () => {
 
   const fetchQuotes = async () => {
     setLoading(true);
-    let isDone = false;
-    
-    // Timeout to prevent infinite loading if Firestore hangs
-    setTimeout(() => {
-      if (!isDone) setLoading(false);
-    }, 3000);
-
     try {
-      // Removed orderBy to prevent "Missing Index" hangs, we sort in JS
-      const q = query(collection(db, 'quotes'));
-      const snap = await getDocs(q);
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      // Sort by createdAt desc manually
-      data.sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
-      setQuotes(data);
-    } catch (err) { 
-      console.error(err); 
+      const snapshot = await get(ref(rtdb, 'quotes'));
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const arr = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+        arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        setQuotes(arr);
+      } else {
+        setQuotes([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setQuotes([]);
     }
-    isDone = true;
     setLoading(false);
   };
 
@@ -584,18 +552,17 @@ const ClientRequests = () => {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this request permanently?')) return;
     setDeletingId(id);
-    try { await deleteDoc(doc(db, 'quotes', id)); setQuotes(q => q.filter(x => x.id !== id)); }
+    try { await remove(ref(rtdb, `quotes/${id}`)); setQuotes(q => q.filter(x => x.id !== id)); }
     catch (err) { console.error(err); }
     setDeletingId(null);
   };
 
   const handleDownload = (q) => {
     try {
-      const items = q.items || [];
-      generateQuotation(q.clientDetails || {}, items, q.refNo || 'N/A');
+      generateQuotation(q.clientDetails || {}, q.items || [], q.refNo || 'N/A');
     } catch (err) {
-      console.error('Download error:', err);
-      alert('Could not regenerate PDF for this quote.');
+      console.error(err);
+      alert('Could not regenerate PDF.');
     }
   };
 
@@ -614,7 +581,7 @@ const ClientRequests = () => {
         <div className="glass-card p-12 text-center rounded-3xl border border-white/5">
           <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-white mb-2">No Requests Yet</h3>
-          <p className="text-gray-400">Client quotation requests will appear here in real-time.</p>
+          <p className="text-gray-400">Client quotation requests will appear here.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -630,7 +597,7 @@ const ClientRequests = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-400">
                     <p><span className="text-gray-500">Phone: </span>{q.clientDetails?.phone || '—'}</p>
                     <p><span className="text-gray-500">Project: </span>{q.clientDetails?.projectType || '—'}</p>
-                    <p className="sm:col-span-2"><span className="text-gray-500">Address: </span>{q.clientDetails?.address || '—'}, {q.clientDetails?.pincode || ''}</p>
+                    <p className="sm:col-span-2"><span className="text-gray-500">Address: </span>{q.clientDetails?.address || '—'}</p>
                   </div>
                   {q.items && q.items.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -645,18 +612,15 @@ const ClientRequests = () => {
                     <div className="text-xs text-gray-500">Total Value</div>
                     <div className="text-xl font-black gold-text">₹{Number(q.total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
                     <div className="text-xs text-gray-600 mt-1">
-                      {q.createdAt?.toDate?.().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleDownload(q)} className="flex items-center gap-1.5 px-3 py-1.5 btn-gold text-xs">
                       <Download className="w-3 h-3" /> Download
                     </button>
-                    <button
-                      onClick={() => handleDelete(q.id)}
-                      disabled={deletingId === q.id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                    >
+                    <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50">
                       <Trash2 className="w-3 h-3" /> Delete
                     </button>
                   </div>

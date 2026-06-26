@@ -3,9 +3,9 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn } from 'lucide-react';
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
-import { auth, provider, db } from '../firebase';
+import { auth, provider, rtdb } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, push } from 'firebase/database';
 
 let refCounter = parseInt(localStorage.getItem('rudra_ref') || '65');
 
@@ -83,9 +83,9 @@ const CartPage = () => {
       projectType: client.projectType || 'Machinery Unit',
     };
 
-    // Save to Firestore first
+    // Save to Realtime Database
     try {
-      await addDoc(collection(db, 'quotes'), {
+      await push(ref(rtdb, 'quotes'), {
         userId: user ? user.uid : 'guest',
         clientDetails: safeClient,
         items: items,
@@ -93,7 +93,7 @@ const CartPage = () => {
         subtotal,
         gst,
         total,
-        createdAt: serverTimestamp()
+        createdAt: new Date().toISOString()
       });
     } catch (err) {
       console.error('Error saving quote to database:', err);
