@@ -17,7 +17,7 @@ const HomePage = () => {
   const navigate = useNavigate();
   const { machinery: MACHINERY, loading } = useMachinery();
   const [toast, setToast] = useState('');
-  const featured = MACHINERY.filter(m => m.inStock).slice(0, 4);
+  const featured = MACHINERY.filter(m => m.stockQuantity !== 0).slice(0, 4);
 
   const handleAddCart = (product) => {
     addToCart(product);

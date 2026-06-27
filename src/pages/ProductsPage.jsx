@@ -23,7 +23,7 @@ const ProductsPage = () => {
 
   const handleAddCart = (product, e) => {
     e.stopPropagation();
-    if (!product.inStock) return;
+    if (product.stockQuantity === 0) return;
     addToCart(product);
     setToast(`${product.name} added to quote!`);
     setTimeout(() => setToast(''), 3000);
@@ -126,7 +126,7 @@ const ProductsPage = () => {
                 {product.tag && (
                   <span className="absolute top-3 left-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-md">{product.tag}</span>
                 )}
-                {!product.inStock && (
+                {product.stockQuantity === 0 && (
                   <span className="absolute top-3 right-3 bg-red-600/90 text-white text-xs font-bold px-2 py-1 rounded-md">Out of Stock</span>
                 )}
                 {/* Hover Overlay */}
@@ -161,7 +161,7 @@ const ProductsPage = () => {
                   </div>
                   <button
                     onClick={e => handleAddCart(product, e)}
-                    disabled={!product.inStock}
+                    disabled={product.stockQuantity === 0}
                     className="btn-coral w-full justify-center text-sm disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     <ShoppingCart className="w-4 h-4" /> Add to Quote

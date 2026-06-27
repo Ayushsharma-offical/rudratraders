@@ -107,7 +107,7 @@ const ProductDetailPage = () => {
           </div>
 
           {/* Qty + Add */}
-          {product.inStock ? (
+          {product.stockQuantity !== 0 ? (
             <div className="flex gap-4 items-center mb-6">
               <div className="flex items-center gap-3 glass-card px-4 py-3 rounded-xl">
                 <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-8 h-8 rounded-full bg-yellow-500/10 hover:bg-yellow-500/20 text-white font-bold flex items-center justify-center transition-all">-</button>
