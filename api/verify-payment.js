@@ -21,7 +21,7 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required parameters' });
     }
 
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    const secret = process.env.RAZORPAY_KEY_SECRET.trim();
 
     // HMAC SHA256 signature verification
     const generated_signature = crypto
