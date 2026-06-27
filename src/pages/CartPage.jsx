@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn, CreditCard } from 'lucide-react';
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
+import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
 import { auth, provider, rtdb } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { ref, push } from 'firebase/database';
@@ -153,6 +154,14 @@ const CartPage = () => {
             
             if (result.success) {
               setPaymentSuccess(true);
+              
+              // Generate advance receipt
+              try {
+                generateAdvanceReceipt(client, advanceAmount, order.order_id);
+              } catch (receiptErr) {
+                console.error('Failed to generate receipt:', receiptErr);
+              }
+
               // Update status in RTDB
               try {
                 // Find and update quote status using quote refNo (optional)

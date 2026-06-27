@@ -132,8 +132,8 @@ export const generateQuotation = (clientDetails, items, refNo) => {
       i + 1,
       item.description,
       item.quantity || 1,
-      `₹${parseFloat(item.rate).toLocaleString('en-IN')}`,
-      `₹${amount.toLocaleString('en-IN')}`,
+      `Rs. ${parseFloat(item.rate).toLocaleString('en-IN')}`,
+      `Rs. ${amount.toLocaleString('en-IN')}`,
     ];
   });
 
@@ -179,7 +179,7 @@ export const generateQuotation = (clientDetails, items, refNo) => {
   doc.setTextColor(40, 40, 40);
   doc.text('Sub Total:', pageW - margin - 73, y + 5.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(`₹${totalExGST.toLocaleString('en-IN')}`, pageW - margin - 2, y + 5.5, { align: 'right' });
+  doc.text(`Rs. ${totalExGST.toLocaleString('en-IN')}`, pageW - margin - 2, y + 5.5, { align: 'right' });
   y += 8;
 
   doc.setFillColor(238, 238, 232);
@@ -187,7 +187,7 @@ export const generateQuotation = (clientDetails, items, refNo) => {
   doc.setFont('helvetica', 'normal');
   doc.text('GST @18%:', pageW - margin - 73, y + 5.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(`₹${gst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`, pageW - margin - 2, y + 5.5, { align: 'right' });
+  doc.text(`Rs. ${gst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`, pageW - margin - 2, y + 5.5, { align: 'right' });
   y += 8;
 
   doc.setFillColor(26, 54, 54);
@@ -196,7 +196,7 @@ export const generateQuotation = (clientDetails, items, refNo) => {
   doc.setFontSize(10);
   doc.setTextColor(212, 175, 55);
   doc.text('TOTAL INR:', pageW - margin - 73, y + 7);
-  doc.text(`₹${grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`, pageW - margin - 2, y + 7, { align: 'right' });
+  doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`, pageW - margin - 2, y + 7, { align: 'right' });
   y += 16;
 
   // ----- AMOUNT IN WORDS -----
