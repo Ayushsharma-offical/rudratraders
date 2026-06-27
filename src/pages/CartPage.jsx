@@ -131,7 +131,7 @@ const CartPage = () => {
 
       // 2. Open Razorpay Modal
       const options = {
-        key: order.key_id,
+        key: 'rzp_live_T6bASddyHt5W3K', // Safe to hardcode public key ID
         amount: order.amount,
         currency: order.currency,
         name: "Rudra Traders",
