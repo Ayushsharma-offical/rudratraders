@@ -2,6 +2,17 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { numToWords } from './generateQuotation'; // Note: numToWords needs to be exported from generateQuotation.js or duplicated here. I will just duplicate it for simplicity since it's not exported.
 
+const formatCurrency = (amount) => {
+  const rounded = Math.round(amount);
+  const x = rounded.toString();
+  const lastThree = x.substring(x.length - 3);
+  const otherNumbers = x.substring(0, x.length - 3);
+  if (otherNumbers !== '') {
+    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree;
+  }
+  return lastThree;
+};
+
 const numberToWords = (num) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
     'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
@@ -118,7 +129,7 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId) => {
     startY: y,
     head: [['Description', 'Amount (INR)']],
     body: [
-      [`Advance Payment Received for Order ${orderId}`, `Rs. ${amountPaid.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`]
+      [`Advance Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]
     ],
     theme: 'grid',
     headStyles: {

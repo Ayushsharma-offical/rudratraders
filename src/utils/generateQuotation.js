@@ -1,6 +1,17 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const formatCurrency = (amount) => {
+  const rounded = Math.round(amount);
+  const x = rounded.toString();
+  const lastThree = x.substring(x.length - 3);
+  const otherNumbers = x.substring(0, x.length - 3);
+  if (otherNumbers !== '') {
+    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree;
+  }
+  return lastThree;
+};
+
 const numToWords = (num) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
     'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
@@ -132,8 +143,8 @@ export const generateQuotation = (clientDetails, items, refNo) => {
       i + 1,
       item.description,
       item.quantity || 1,
-      `Rs. ${parseFloat(item.rate).toLocaleString('en-IN')}`,
-      `Rs. ${amount.toLocaleString('en-IN')}`,
+      `Rs. ${formatCurrency(parseFloat(item.rate))}`,
+      `Rs. ${formatCurrency(amount)}`,
     ];
   });
 
@@ -179,7 +190,7 @@ export const generateQuotation = (clientDetails, items, refNo) => {
   doc.setTextColor(40, 40, 40);
   doc.text('Sub Total:', pageW - margin - 73, y + 5.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Rs. ${totalExGST.toLocaleString('en-IN')}`, pageW - margin - 2, y + 5.5, { align: 'right' });
+  doc.text(`Rs. ${formatCurrency(totalExGST)}`, pageW - margin - 2, y + 5.5, { align: 'right' });
   y += 8;
 
   doc.setFillColor(238, 238, 232);
@@ -187,7 +198,7 @@ export const generateQuotation = (clientDetails, items, refNo) => {
   doc.setFont('helvetica', 'normal');
   doc.text('GST @18%:', pageW - margin - 73, y + 5.5);
   doc.setFont('helvetica', 'bold');
-  doc.text(`Rs. ${gst.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`, pageW - margin - 2, y + 5.5, { align: 'right' });
+  doc.text(`Rs. ${formatCurrency(gst)}`, pageW - margin - 2, y + 5.5, { align: 'right' });
   y += 8;
 
   doc.setFillColor(26, 54, 54);
@@ -196,7 +207,7 @@ export const generateQuotation = (clientDetails, items, refNo) => {
   doc.setFontSize(10);
   doc.setTextColor(212, 175, 55);
   doc.text('TOTAL INR:', pageW - margin - 73, y + 7);
-  doc.text(`Rs. ${grandTotal.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`, pageW - margin - 2, y + 7, { align: 'right' });
+  doc.text(`Rs. ${formatCurrency(grandTotal)}`, pageW - margin - 2, y + 7, { align: 'right' });
   y += 16;
 
   // ----- AMOUNT IN WORDS -----
