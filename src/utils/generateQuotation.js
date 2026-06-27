@@ -12,7 +12,7 @@ const formatCurrency = (amount) => {
   return lastThree;
 };
 
-const numToWords = (num) => {
+export const numToWords = (num) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
     'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
     'Seventeen', 'Eighteen', 'Nineteen'];
