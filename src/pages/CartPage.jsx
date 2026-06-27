@@ -174,16 +174,21 @@ const CartPage = () => {
         }
       };
 
+      const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T6Nvhqgd3moJn6';
+      console.log('Razorpay Key being used:', rzpKey);
+      console.log('Order ID:', order.order_id);
+      console.log('Amount:', order.amount);
+
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response){
-        console.error(response.error);
-        alert(response.error.description);
+        console.error('Payment failed full response:', JSON.stringify(response));
+        alert('Payment Failed: ' + response.error.code + ' - ' + response.error.description);
       });
       rzp.open();
 
     } catch (error) {
       console.error('Payment initiation error:', error);
-      alert('Could not start payment. Please try again.');
+      alert('Could not start payment: ' + error.message);
     } finally {
       setPaying(false);
     }
