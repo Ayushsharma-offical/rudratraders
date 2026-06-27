@@ -174,8 +174,6 @@ const CartPage = () => {
         }
       };
 
-      const rzpKey = import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T6Nvhqgd3moJn6';
-      console.log('Razorpay Key being used:', rzpKey);
       console.log('Order ID:', order.order_id);
       console.log('Amount:', order.amount);
 
