@@ -131,7 +131,7 @@ const CartPage = () => {
 
       // 2. Open Razorpay Modal
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T6Nvhqgd3moJn6',
+        key: order.key_id,
         amount: order.amount,
         currency: order.currency,
         name: "Rudra Traders",

@@ -41,6 +41,7 @@ module.exports = async function handler(req, res) {
       order_id: order.id,
       amount: order.amount,
       currency: order.currency,
+      key_id: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
     console.error('Razorpay create order error:', error);
