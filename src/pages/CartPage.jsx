@@ -118,8 +118,7 @@ const CartPage = () => {
     setPaying(true);
     try {
       // 1. Create order on backend (amount in paise - minimum 100)
-      // Let's use 10% of total as advance, or minimum 5000 rupees for demo
-      const advanceAmount = Math.max(5000, Math.round(total * 0.10));
+      const advanceAmount = Math.max(1, Math.round(total * 0.10));
       
       const res = await fetch('/api/create-order', {
         method: 'POST',
@@ -221,7 +220,7 @@ const CartPage = () => {
             <h3 className="text-yellow-400 font-bold mb-2 text-lg">Confirm Your Order Now</h3>
             <p className="text-sm text-gray-400 mb-4">Pay 10% advance to lock current prices and prioritize your order processing.</p>
             <button onClick={handlePayment} disabled={paying} className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
-              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Advance (₹{Math.max(5000, Math.round(total * 0.10)).toLocaleString()})</>}
+              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Advance (₹{Math.max(1, Math.round(total * 0.10)).toLocaleString()})</>}
             </button>
           </div>
         )}
