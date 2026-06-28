@@ -6,7 +6,7 @@ import { generateQuotation } from '../utils/generateQuotation';
 import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
 import { auth, provider, rtdb } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
-import { ref, push } from 'firebase/database';
+import { ref, push, update } from 'firebase/database';
 
 let refCounter = parseInt(localStorage.getItem('rudra_ref') || '65');
 
@@ -19,6 +19,7 @@ const CartPage = () => {
   const [client, setClient] = useState({
     name: '', careOf: '', address: '', pincode: '', phone: '', projectType: ''
   });
+  const [quoteId, setQuoteId] = useState(null);
   const [errors, setErrors] = useState({});
   const [user, setUser] = useState(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -88,7 +89,7 @@ const CartPage = () => {
 
     // Save to Realtime Database
     try {
-      await push(ref(rtdb, 'quotes'), {
+      const newQuoteRef = await push(ref(rtdb, 'quotes'), {
         userId: user ? user.uid : 'guest',
         clientDetails: safeClient,
         items: items,
@@ -98,6 +99,7 @@ const CartPage = () => {
         total,
         createdAt: new Date().toISOString()
       });
+      setQuoteId(newQuoteRef.key);
     } catch (err) {
       console.error('Error saving quote to database:', err);
     }
@@ -163,7 +165,14 @@ const CartPage = () => {
 
               // Update status in RTDB
               try {
-                // Find and update quote status using quote refNo (optional)
+                if (quoteId) {
+                  await update(ref(rtdb, `quotes/${quoteId}`), {
+                    paymentStatus: 'Advance Received',
+                    advanceAmount: advanceAmount,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id
+                  });
+                }
               } catch (e) { console.error('Error updating status:', e); }
             } else {
               alert('Payment Verification Failed!');

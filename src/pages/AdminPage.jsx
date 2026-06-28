@@ -10,6 +10,7 @@ import {
 import { useMachinery } from '../hooks/useMachinery';
 import { CATEGORIES } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
+import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
 
 // ============================================================
 // LOGIN SCREEN
@@ -86,7 +87,7 @@ const Sidebar = ({ active, setActive, onLogout }) => {
         <div className="w-9 h-9 bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-xl flex items-center justify-center text-black font-black text-sm">R</div>
         <div>
           <div className="text-sm font-black gold-text">RUDRA TRADERS</div>
-          <div className="text-xs text-gray-600">Admin Portal</div>
+          <div className="text-[10px] font-black tracking-widest uppercase bg-red-600 text-white px-2 py-0.5 rounded shadow-lg shadow-red-900/50 inline-block mt-0.5">ADMIN</div>
         </div>
       </div>
       <nav className="flex-1 p-3 space-y-1">
@@ -566,6 +567,15 @@ const ClientRequests = () => {
     }
   };
 
+  const handleDownloadReceipt = (q) => {
+    try {
+      generateAdvanceReceipt(q.clientDetails || {}, q.advanceAmount || 0, q.razorpay_order_id || 'N/A');
+    } catch (err) {
+      console.error(err);
+      alert('Could not regenerate Advance Receipt.');
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -594,11 +604,23 @@ const ClientRequests = () => {
                     <span className="text-xs text-gray-500 bg-black/30 px-2 py-0.5 rounded-md">Ref: {q.refNo}</span>
                     {q.source === 'admin' && <span className="text-xs text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md">Admin Generated</span>}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-400">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-400 mb-3">
                     <p><span className="text-gray-500">Phone: </span>{q.clientDetails?.phone || '—'}</p>
                     <p><span className="text-gray-500">Project: </span>{q.clientDetails?.projectType || '—'}</p>
                     <p className="sm:col-span-2"><span className="text-gray-500">Address: </span>{q.clientDetails?.address || '—'}</p>
                   </div>
+                  
+                  {q.paymentStatus === 'Advance Received' && (
+                    <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-xl inline-block w-full sm:w-auto">
+                      <div className="flex items-center gap-2 text-green-400 font-bold text-sm mb-1">
+                        <CheckCircle2 className="w-4 h-4" /> Advance Received (₹{(q.advanceAmount || 0).toLocaleString()})
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        Remaining Balance: <span className="text-white font-bold">₹{((q.total || 0) - (q.advanceAmount || 0)).toLocaleString()}</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   {q.items && q.items.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1">
                       {q.items.map((item, i) => (
@@ -616,8 +638,13 @@ const ClientRequests = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {q.paymentStatus === 'Advance Received' && (
+                      <button onClick={() => handleDownloadReceipt(q)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors text-xs">
+                        <Download className="w-3 h-3" /> Receipt
+                      </button>
+                    )}
                     <button onClick={() => handleDownload(q)} className="flex items-center gap-1.5 px-3 py-1.5 btn-gold text-xs">
-                      <Download className="w-3 h-3" /> Download
+                      <Download className="w-3 h-3" /> PDF
                     </button>
                     <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id}
                       className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50">
