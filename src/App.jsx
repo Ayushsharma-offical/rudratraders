@@ -54,25 +54,36 @@ const AppShell = () => {
 };
 
 const IntroScreen = ({ onComplete }) => {
+  const [started, setStarted] = React.useState(false);
   const videoRef = React.useRef(null);
 
-  const handlePlay = () => {
-    const video = videoRef.current;
-    if (video) {
-      video.muted = false;
-      video.play().catch(() => {
-        video.muted = true;
-        video.play();
-      });
-    }
+  const handleStart = () => {
+    setStarted(true);
+    setTimeout(() => {
+      if (videoRef.current) {
+        videoRef.current.play();
+      }
+    }, 100);
   };
+
+  if (!started) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+        <button
+          onClick={handleStart}
+          className="text-white border border-white/50 px-10 py-5 text-lg hover:bg-white hover:text-black transition-all"
+        >
+          ▶ Enter Site
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
       <video
         ref={videoRef}
         playsInline
-        onCanPlay={handlePlay}
         onEnded={onComplete}
         className="w-full h-full object-contain"
       >
@@ -87,18 +98,3 @@ const IntroScreen = ({ onComplete }) => {
     </div>
   );
 };
-
-const App = () => {
-  const [showIntro, setShowIntro] = useState(true);
-  return (
-    <BrowserRouter>
-      {showIntro ? (
-        <IntroScreen onComplete={() => setShowIntro(false)} />
-      ) : (
-        <AppShell />
-      )}
-    </BrowserRouter>
-  );
-};
-
-export default App;
