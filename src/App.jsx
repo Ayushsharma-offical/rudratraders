@@ -54,18 +54,32 @@ const AppShell = () => {
 };
 
 const IntroScreen = ({ onComplete }) => {
+  const videoRef = React.useRef(null);
+
+  const handlePlay = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.muted = false;
+      video.play().catch(() => {
+        video.muted = true;
+        video.play();
+      });
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
-      <video 
-        autoPlay
-        playsInline 
+      <video
+        ref={videoRef}
+        playsInline
+        onCanPlay={handlePlay}
         onEnded={onComplete}
         className="w-full h-full object-contain"
       >
         <source src="/intro.mp4" type="video/mp4" />
       </video>
-      <button 
-        onClick={onComplete} 
+      <button
+        onClick={onComplete}
         className="absolute bottom-10 right-10 text-white/50 hover:text-white transition-colors text-sm"
       >
         Skip Intro &rarr;
@@ -76,7 +90,6 @@ const IntroScreen = ({ onComplete }) => {
 
 const App = () => {
   const [showIntro, setShowIntro] = useState(true);
-
   return (
     <BrowserRouter>
       {showIntro ? (
