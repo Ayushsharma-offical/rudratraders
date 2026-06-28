@@ -70,10 +70,10 @@ const Navbar = () => {
             </button>
             <button
               onClick={() => navigate('/admin')}
-              className="text-gray-400 hover:text-white transition-colors hidden md:block"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wider border border-red-500/20"
               title="Admin Portal"
             >
-              <Lock className="w-4 h-4" />
+              <Lock className="w-3 h-3" /> Admin
             </button>
             <button
               onClick={() => navigate('/cart')}
