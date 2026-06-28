@@ -51,37 +51,29 @@ const AppShell = () => {
     </>
   );
 };
-
 const IntroScreen = ({ onComplete }) => {
-  const [started, setStarted] = React.useState(false);
   const videoRef = React.useRef(null);
+  const [showMessage, setShowMessage] = React.useState(true);
 
-  const handleStart = () => {
-    setStarted(true);
-    setTimeout(() => {
-      if (videoRef.current) {
+  const startVideo = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+      videoRef.current.play().then(() => {
+        setShowMessage(false);
+      }).catch(() => {
+        videoRef.current.muted = true;
         videoRef.current.play();
-      }
-    }, 100);
+        setShowMessage(false);
+      });
+    }
   };
 
-  if (!started) {
-    return (
-  <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center gap-6">
-  <img src="/favicon.svg" className="w-24 h-24 animate-pulse" />
-  <h1 className="text-white text-3xl font-bold tracking-widest">RUDRA TRADERS</h1>
-  <button
-    onClick={handleStart}
-    className="mt-4 text-yellow-400 border border-yellow-400 px-12 py-4 text-sm tracking-widest uppercase hover:bg-yellow-400 hover:text-black transition-all"
-  >
-    ▶ Enter
-  </button>
-</div>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
+    <div
+      className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+      onMouseEnter={startVideo}
+      onClick={startVideo}
+    >
       <video
         ref={videoRef}
         playsInline
@@ -90,6 +82,16 @@ const IntroScreen = ({ onComplete }) => {
       >
         <source src="/intro.mp4" type="video/mp4" />
       </video>
+
+      {/* Stylish message — video start hote hi gayab */}
+      {showMessage && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+          <p className="text-white/60 text-sm tracking-[0.3em] uppercase animate-pulse">
+            Click anywhere to enter with sound
+          </p>
+        </div>
+      )}
+
       <button
         onClick={onComplete}
         className="absolute bottom-10 right-10 text-white/50 hover:text-white transition-colors text-sm"
@@ -99,7 +101,6 @@ const IntroScreen = ({ onComplete }) => {
     </div>
   );
 };
-
 const App = () => {
   const [showIntro, setShowIntro] = useState(true);
   return (
