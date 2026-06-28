@@ -57,8 +57,7 @@ const IntroScreen = ({ onComplete }) => {
   return (
     <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
       <video 
-        autoPlay 
-        muted 
+        autoPlay
         playsInline 
         onEnded={onComplete}
         className="w-full h-full object-contain"
