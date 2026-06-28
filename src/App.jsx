@@ -21,7 +21,6 @@ const ScrollTop = () => {
 const AppShell = () => {
   const { pathname } = useLocation();
   const isAdmin = pathname.startsWith('/admin');
-
   return (
     <>
       <ScrollTop />
@@ -98,3 +97,18 @@ const IntroScreen = ({ onComplete }) => {
     </div>
   );
 };
+
+const App = () => {
+  const [showIntro, setShowIntro] = useState(true);
+  return (
+    <BrowserRouter>
+      {showIntro ? (
+        <IntroScreen onComplete={() => setShowIntro(false)} />
+      ) : (
+        <AppShell />
+      )}
+    </BrowserRouter>
+  );
+};
+
+export default App;
