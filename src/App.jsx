@@ -67,14 +67,16 @@ const IntroScreen = ({ onComplete }) => {
 
   if (!started) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black flex items-center justify-center">
-        <button
-          onClick={handleStart}
-          className="text-white border border-white/50 px-10 py-5 text-lg hover:bg-white hover:text-black transition-all"
-        >
-          ▶ Enter Site
-        </button>
-      </div>
+  <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center gap-6">
+  <img src="/favicon.svg" className="w-24 h-24 animate-pulse" />
+  <h1 className="text-white text-3xl font-bold tracking-widest">RUDRA TRADERS</h1>
+  <button
+    onClick={handleStart}
+    className="mt-4 text-yellow-400 border border-yellow-400 px-12 py-4 text-sm tracking-widest uppercase hover:bg-yellow-400 hover:text-black transition-all"
+  >
+    ▶ Enter
+  </button>
+</div>
     );
   }
 
