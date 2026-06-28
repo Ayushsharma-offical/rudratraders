@@ -44,11 +44,9 @@ const AboutPage = () => {
               ))}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <img src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&q=80&w=400" alt="Factory" className="rounded-2xl h-56 w-full object-cover opacity-70 mt-8" />
-            <img src="https://images.unsplash.com/photo-1565514020179-026b92b2d796?auto=format&fit=crop&q=80&w=400" alt="Machinery" className="rounded-2xl h-56 w-full object-cover opacity-70" />
-            <img src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400" alt="Equipment" className="rounded-2xl h-56 w-full object-cover opacity-70" />
-            <img src="https://images.unsplash.com/photo-1503596476-1c12a8ba09a9?auto=format&fit=crop&q=80&w=400" alt="Processing" className="rounded-2xl h-56 w-full object-cover opacity-70 -mt-8" />
+          <div className="grid grid-cols-2 gap-4 items-center">
+            <img src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&q=80&w=400" alt="Factory" className="rounded-2xl h-64 w-full object-cover opacity-80 mt-8" />
+            <img src="https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400" alt="Equipment" className="rounded-2xl h-64 w-full object-cover opacity-80 -mt-8" />
           </div>
         </div>
       </section>
