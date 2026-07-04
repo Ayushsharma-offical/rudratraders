@@ -86,7 +86,7 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId) => {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.setTextColor(10, 15, 15);
-  doc.text('ADVANCE PAYMENT RECEIPT', pageW / 2, 49, { align: 'center' });
+  doc.text('PAYMENT RECEIPT', pageW / 2, 49, { align: 'center' });
 
   // ----- REF & DATE -----
   let y = 62;
@@ -129,7 +129,7 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId) => {
     startY: y,
     head: [['Description', 'Amount (INR)']],
     body: [
-      [`Advance Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]
+      [`Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]
     ],
     theme: 'grid',
     headStyles: {
@@ -169,7 +169,7 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId) => {
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(40, 40, 40);
-  doc.text('This is a computer-generated receipt for your advance payment.', margin, y);
+  doc.text('This is a computer-generated receipt for your payment.', margin, y);
   doc.text('We will begin processing your machinery order immediately.', margin, y + 6);
   
   const sigX = margin + (pageW - margin * 2) * 0.65;
@@ -193,5 +193,5 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId) => {
 
   // Save
   const safeName = (clientDetails.name || 'Client').replace(/\s+/g, '_');
-  doc.save(`Rudra_Traders_Advance_Receipt_${safeName}.pdf`);
+  doc.save(`Rudra_Traders_Payment_Receipt_${safeName}.pdf`);
 };

@@ -610,14 +610,16 @@ const ClientRequests = () => {
                     <p className="sm:col-span-2"><span className="text-gray-500">Address: </span>{q.clientDetails?.address || '—'}</p>
                   </div>
                   
-                  {q.paymentStatus === 'Advance Received' && (
+                  {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
                     <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-xl inline-block w-full sm:w-auto">
                       <div className="flex items-center gap-2 text-green-400 font-bold text-sm mb-1">
-                        <CheckCircle2 className="w-4 h-4" /> Advance Received (₹{(q.advanceAmount || 0).toLocaleString()})
+                        <CheckCircle2 className="w-4 h-4" /> {q.paymentStatus === 'Full Payment Received' ? 'Full Payment Received' : 'Advance Received'} (₹{(q.advanceAmount || 0).toLocaleString()})
                       </div>
-                      <div className="text-xs text-gray-400">
-                        Remaining Balance: <span className="text-white font-bold">₹{((q.total || 0) - (q.advanceAmount || 0)).toLocaleString()}</span>
-                      </div>
+                      {q.paymentStatus === 'Advance Received' && (
+                        <div className="text-xs text-gray-400">
+                          Remaining Balance: <span className="text-white font-bold">₹{((q.total || 0) - (q.advanceAmount || 0)).toLocaleString()}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                   
@@ -638,7 +640,7 @@ const ClientRequests = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {q.paymentStatus === 'Advance Received' && (
+                    {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
                       <button onClick={() => handleDownloadReceipt(q)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors text-xs">
                         <Download className="w-3 h-3" /> Receipt
                       </button>

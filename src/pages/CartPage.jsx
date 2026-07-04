@@ -120,12 +120,12 @@ const CartPage = () => {
     setPaying(true);
     try {
       // 1. Create order on backend (amount in paise - minimum 100)
-      const advanceAmount = Math.max(1, Math.round(total * 0.10));
+      const paymentAmount = Math.max(1, Math.round(total));
       
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: advanceAmount * 100, receipt: refCounter.toString() })
+        body: JSON.stringify({ amount: paymentAmount * 100, receipt: refCounter.toString() })
       });
       
       const order = await res.json();
@@ -137,7 +137,7 @@ const CartPage = () => {
         amount: order.amount,
         currency: order.currency,
         name: "Rudra Traders",
-        description: `Advance Payment for Quote #${refCounter}`,
+        description: `Full Payment for Quote #${refCounter}`,
         order_id: order.order_id,
         handler: async (response) => {
           try {
@@ -156,9 +156,9 @@ const CartPage = () => {
             if (result.success) {
               setPaymentSuccess(true);
               
-              // Generate advance receipt
+              // Generate payment receipt
               try {
-                generateAdvanceReceipt(client, advanceAmount, order.order_id);
+                generateAdvanceReceipt(client, paymentAmount, order.order_id);
               } catch (receiptErr) {
                 console.error('Failed to generate receipt:', receiptErr);
               }
@@ -167,8 +167,8 @@ const CartPage = () => {
               try {
                 if (quoteId) {
                   await update(ref(rtdb, `quotes/${quoteId}`), {
-                    paymentStatus: 'Advance Received',
-                    advanceAmount: advanceAmount,
+                    paymentStatus: 'Full Payment Received',
+                    advanceAmount: paymentAmount, // Keeping field name for backwards compatibility
                     razorpay_order_id: response.razorpay_order_id,
                     razorpay_payment_id: response.razorpay_payment_id
                   });
@@ -221,15 +221,15 @@ const CartPage = () => {
         
         {paymentSuccess ? (
           <div className="mb-8 p-4 bg-green-500/10 border border-green-500/30 rounded-2xl">
-            <h3 className="text-green-400 font-bold mb-1">Advance Payment Received</h3>
-            <p className="text-sm text-green-500/70">Your order is now confirmed. We will process it immediately.</p>
+            <h3 className="text-green-400 font-bold mb-1">Full Payment Received</h3>
+            <p className="text-sm text-green-500/70">Your order is now confirmed and fully paid. We will process it immediately.</p>
           </div>
         ) : (
           <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
             <h3 className="text-yellow-400 font-bold mb-2 text-lg">Confirm Your Order Now</h3>
-            <p className="text-sm text-gray-400 mb-4">Pay 10% advance to lock current prices and prioritize your order processing.</p>
+            <p className="text-sm text-gray-400 mb-4">Pay the full amount securely to lock current prices and prioritize your order processing.</p>
             <button onClick={handlePayment} disabled={paying} className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
-              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Advance (₹{Math.max(1, Math.round(total * 0.10)).toLocaleString()})</>}
+              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Full Amount (₹{Math.max(1, Math.round(total)).toLocaleString()})</>}
             </button>
           </div>
         )}
