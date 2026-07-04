@@ -1,5 +1,6 @@
 import React from 'react';
 import { Globe, Truck, ShieldCheck, Award, Users, Factory, Zap } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const AboutPage = () => {
   const values = [
@@ -16,9 +17,14 @@ const AboutPage = () => {
   ];
 
   return (
-    <div className="pt-28 min-h-screen pb-20">
-      {/* Header */}
-      <section className="max-w-7xl mx-auto px-6 mb-20">
+    <div className="bg-[#0a0a0a] min-h-screen">
+      <SEO 
+        title="About Us"
+        description="Learn about Rudra Traders, our values, and our mission to empower small businesses with premium machinery and logistics."
+        url="/about"
+      />
+      {/* Hero Section */}
+      <section className="max-w-7xl mx-auto px-6 mb-20 pt-28">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <div>
             <div className="badge-gold inline-block mb-6">Our Story</div>

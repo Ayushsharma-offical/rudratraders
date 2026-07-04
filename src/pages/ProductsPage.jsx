@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Star, ShoppingCart, SlidersHorizontal, X, ShieldCheck } from 'lucide-react';
 import { CATEGORIES, addToCart } from '../data/machinery';
 import { useMachinery } from '../hooks/useMachinery';
+import SEO from '../components/SEO';
 
 const Toast = ({ msg, onClose }) => (
   <div className="toast" onClick={onClose}>

@@ -1,9 +1,32 @@
 import React from 'react';
 import { MapPin, Phone, Mail, Clock, MessageCircle } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const ContactPage = () => {
+  const localBizSchema = {
+    "@context": "https://schema.org",
+    "@type": "LocalBusiness",
+    "name": "Rudra Traders",
+    "image": "https://rudratraders.in/hero_banner.jpg",
+    "telephone": "+918130957597",
+    "email": "contact@rudratraders.in",
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "255A, Vipin Garden, Behind Ring Meadows Public School",
+      "addressLocality": "Dwarka, New Delhi",
+      "postalCode": "110059",
+      "addressCountry": "IN"
+    }
+  };
+
   return (
     <div className="pt-28 min-h-screen pb-20">
+      <SEO 
+        title="Contact Us"
+        description="Get in touch with Rudra Traders for wholesale spices and machinery logistics. Contact us via phone, email, or visit our office in Delhi."
+        url="/contact"
+        schema={localBizSchema}
+      />
       {/* Header */}
       <div className="max-w-7xl mx-auto px-6 mb-16 text-center">
         <div className="badge-gold inline-block mb-4">Get In Touch</div>

@@ -7,6 +7,7 @@ import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
 import { auth, provider, rtdb } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { ref, push, update } from 'firebase/database';
+import SEO from '../components/SEO';
 
 let refCounter = parseInt(localStorage.getItem('rudra_ref') || '65');
 
@@ -247,7 +248,13 @@ const CartPage = () => {
   );
 
   return (
-    <div className="pt-10 min-h-screen max-w-7xl mx-auto px-6 pb-20">
+    <div className="pt-28 min-h-screen pb-20">
+      <SEO 
+        title="Your Cart & Checkout"
+        description="Review your selected items and complete your order with Rudra Traders securely."
+        url="/cart"
+      />
+      <div className="max-w-7xl mx-auto px-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-10">
         <button onClick={() => navigate(-1)} className="p-2 hover:text-yellow-400 transition-colors text-gray-400">
@@ -443,6 +450,7 @@ const CartPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
