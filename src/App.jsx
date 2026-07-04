@@ -54,7 +54,8 @@ const AppShell = () => {
 };
 const IntroScreen = ({ onComplete }) => {
   const videoRef = React.useRef(null);
-  const [showMessage, setShowMessage] = React.useState(true);
+  const isApp = navigator.userAgent.includes('RudraApp');
+  const [showMessage, setShowMessage] = React.useState(!isApp);
 
   const startVideo = () => {
     if (videoRef.current) {
@@ -68,6 +69,15 @@ const IntroScreen = ({ onComplete }) => {
       });
     }
   };
+
+  React.useEffect(() => {
+    if (isApp) {
+      // Small delay to ensure video element is fully mounted and ready
+      setTimeout(() => {
+        startVideo();
+      }, 100);
+    }
+  }, [isApp]);
 
   return (
     <div

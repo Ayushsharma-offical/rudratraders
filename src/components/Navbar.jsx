@@ -64,17 +64,22 @@ const Navbar = () => {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3">
             <button className="text-gray-300 hover:text-white transition-colors hidden md:block">
               <Search className="w-5 h-5" />
             </button>
+
+            {/* Admin Button — always visible on ALL screen sizes */}
             <button
               onClick={() => navigate('/admin')}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wider border border-red-500/20"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wider border border-red-500/30"
               title="Admin Portal"
             >
-              <Lock className="w-3 h-3" /> Admin
+              <Lock className="w-3 h-3" />
+              <span className="hidden sm:inline">Admin</span>
             </button>
+
+            {/* Cart */}
             <button
               onClick={() => navigate('/cart')}
               className="relative text-gray-300 hover:text-white transition-colors"
@@ -86,19 +91,23 @@ const Navbar = () => {
                 </span>
               )}
             </button>
+
+            {/* Order Now — desktop only */}
             <button
               onClick={() => navigate('/cart')}
               className="hidden md:flex btn-green"
             >
               Order Now <ArrowRight className="w-4 h-4" />
             </button>
+
+            {/* Hamburger — mobile only */}
             <button className="md:hidden text-gray-300" onClick={() => setMobileOpen(!mobileOpen)}>
               {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* Mobile Dropdown Menu */}
         {mobileOpen && (
           <div className="md:hidden pt-4 pb-2">
             {links.map(l => (
@@ -111,6 +120,15 @@ const Navbar = () => {
                 {l.label}
               </Link>
             ))}
+            {/* Admin Portal in mobile dropdown */}
+            <Link
+              to="/admin"
+              onClick={() => setMobileOpen(false)}
+              className="block px-2 py-3 font-bold uppercase border-b border-white/5"
+              style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}
+            >
+              🔒 Admin Portal
+            </Link>
             <div className="pt-4">
               <button onClick={() => { navigate('/cart'); setMobileOpen(false); }} className="btn-green w-full justify-center">
                 Order Now <ArrowRight className="w-4 h-4" />
