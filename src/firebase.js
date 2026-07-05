@@ -1,8 +1,8 @@
-// Firebase Configuration - Using Realtime Database
+// Firebase Configuration - Using Realtime Database + Phone Auth
 import { initializeApp } from "firebase/app";
 import { getAnalytics } from "firebase/analytics";
 import { getDatabase } from "firebase/database";
-import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getAuth, setPersistence, browserLocalPersistence, RecaptchaVerifier } from "firebase/auth";
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -24,6 +24,16 @@ const auth = getAuth(app);
 // Use localStorage instead of sessionStorage so auth survives WebView navigation
 setPersistence(auth, browserLocalPersistence).catch(console.error);
 
-const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: 'select_account' });
-export { app, analytics, rtdb, auth, provider };
+// Setup invisible reCAPTCHA for phone auth
+const setupRecaptcha = (elementId) => {
+  if (!window.recaptchaVerifier) {
+    window.recaptchaVerifier = new RecaptchaVerifier(auth, elementId, {
+      size: 'invisible',
+      callback: () => {},
+      'expired-callback': () => { window.recaptchaVerifier = null; }
+    });
+  }
+  return window.recaptchaVerifier;
+};
+
+export { app, analytics, rtdb, auth, setupRecaptcha };

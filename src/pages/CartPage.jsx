@@ -4,8 +4,8 @@ import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, L
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
 import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
-import { auth, provider, rtdb } from '../firebase';
-import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { auth, rtdb, setupRecaptcha } from '../firebase';
+import { signInWithPhoneNumber } from 'firebase/auth';
 import { ref, push, update } from 'firebase/database';
 import SEO from '../components/SEO';
 
@@ -28,20 +28,15 @@ const CartPage = () => {
   const [showTerms, setShowTerms] = useState(false);
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [skipQuotation, setSkipQuotation] = useState(false);
+  const [phoneAuthNumber, setPhoneAuthNumber] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [phoneLoading, setPhoneLoading] = useState(false);
   useEffect(() => {
     setCart(getCart());
     const handler = () => setCart(getCart());
     window.addEventListener('cart_updated', handler);
-    
-    // Handle Google redirect result (for WebView / mobile where popup is blocked)
-    getRedirectResult(auth).then(result => {
-      if (result?.user) {
-        setUser(result.user);
-        setClient(prev => ({ ...prev, name: result.user.displayName || '' }));
-      }
-    }).catch(err => {
-      console.error('Redirect result error:', err);
-    });
     
     const unsub = auth.onAuthStateChanged(u => {
       setUser(u);
@@ -56,18 +51,43 @@ const CartPage = () => {
     };
   }, []);
 
-  const handleGoogleLogin = async () => {
-    setLoadingGoogle(true);
-    try {
-      // signInWithRedirect works in all environments including WebView/Android
-      // It redirects to Google, user signs in, then returns back to the app
-      await signInWithRedirect(auth, provider);
-    } catch (error) {
-      console.error("Google Sign-In Error:", error);
-      setLoadingGoogle(false);
+  const handleSendOtp = async () => {
+    if (!phoneAuthNumber || phoneAuthNumber.length < 10) {
+      alert("Please enter a valid 10-digit mobile number");
+      return;
     }
-    // Note: setLoadingGoogle(false) not called here intentionally
-    // because the page will redirect away and come back
+    setPhoneLoading(true);
+    try {
+      const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+      const formattedPhone = phoneAuthNumber.startsWith('+91') ? phoneAuthNumber : `+91${phoneAuthNumber}`;
+      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
+      setConfirmationResult(confirmation);
+      setOtpSent(true);
+      setClient(prev => ({ ...prev, phone: phoneAuthNumber })); // prefill phone
+    } catch (error) {
+      console.error("OTP Send Error:", error);
+      alert("Could not send OTP. Please try again.");
+    } finally {
+      setPhoneLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      alert("Please enter the 6-digit OTP");
+      return;
+    }
+    setPhoneLoading(true);
+    try {
+      const result = await confirmationResult.confirm(otpCode);
+      setUser(result.user);
+      // login successful, the onAuthStateChanged will handle the rest
+    } catch (error) {
+      console.error("OTP Verify Error:", error);
+      alert("Invalid OTP. Please try again.");
+    } finally {
+      setPhoneLoading(false);
+    }
   };
 
   const handleRemove = (id) => { removeFromCart(id); setCart(getCart()); };
@@ -567,20 +587,60 @@ const CartPage = () => {
           {/* Form or Google Login */}
           <div className="lg:col-span-2 glass-card p-8 rounded-2xl hover-float">
             {!user ? (
-              <div className="text-center py-16">
+              <div className="text-center py-16 max-w-sm mx-auto">
                 <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
                   <LogIn className="w-8 h-8 text-yellow-400" />
                 </div>
                 <h2 className="text-2xl font-bold text-white mb-3">Sign In to Continue</h2>
-                <p className="text-gray-400 mb-8 max-w-md mx-auto">Please sign in with your Google account so we can securely store your quotation details and follow up with you.</p>
-                <button 
-                  onClick={handleGoogleLogin} 
-                  disabled={loadingGoogle}
-                  className="bg-white text-black font-bold px-6 py-3 rounded-full flex items-center justify-center gap-3 mx-auto hover:bg-gray-200 transition-all w-64 shadow-lg border border-gray-200"
-                >
-                  <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                  {loadingGoogle ? 'Signing in...' : 'Sign in with Google'}
-                </button>
+                <p className="text-gray-400 mb-8">Please sign in with your mobile number to securely store your quotation details and follow up with you.</p>
+                
+                <div id="recaptcha-container"></div>
+                
+                {!otpSent ? (
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      <span className="flex items-center justify-center bg-black/40 border border-white/10 rounded-xl px-4 text-gray-400 font-bold">+91</span>
+                      <input 
+                        type="tel" 
+                        placeholder="10-digit mobile number" 
+                        value={phoneAuthNumber}
+                        onChange={e => setPhoneAuthNumber(e.target.value)}
+                        className="input-dark flex-1 text-center text-lg tracking-widest" 
+                        style={{ background: 'rgba(0,0,0,0.3)' }}
+                        maxLength="10"
+                      />
+                    </div>
+                    <button 
+                      onClick={handleSendOtp} 
+                      disabled={phoneLoading || !phoneAuthNumber}
+                      className="btn-gold w-full justify-center shadow-lg"
+                    >
+                      {phoneLoading ? 'Sending OTP...' : 'Send OTP'}
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <p className="text-sm text-green-400 font-medium bg-green-500/10 p-2 rounded-lg inline-block mb-2">OTP sent to +91 {phoneAuthNumber}</p>
+                    <input 
+                      type="number" 
+                      placeholder="Enter 6-digit OTP" 
+                      value={otpCode}
+                      onChange={e => setOtpCode(e.target.value)}
+                      className="input-dark w-full text-center text-xl tracking-[0.5em]" 
+                      style={{ background: 'rgba(0,0,0,0.3)' }}
+                      maxLength="6"
+                    />
+                    <button 
+                      onClick={handleVerifyOtp} 
+                      disabled={phoneLoading || !otpCode}
+                      className="btn-gold w-full justify-center shadow-lg"
+                    >
+                      {phoneLoading ? 'Verifying...' : 'Verify & Continue'}
+                    </button>
+                    <button onClick={() => setOtpSent(false)} className="text-sm text-gray-400 hover:text-white mt-2 block w-full">Change Mobile Number</button>
+                  </div>
+                )}
+                
                 <button onClick={() => setStep(1)} className="mt-8 text-sm text-gray-500 hover:text-white transition-colors">
                   &larr; Back to Cart
                 </button>
@@ -591,7 +651,7 @@ const CartPage = () => {
                   <h2 className="text-xl font-bold text-white">Your Details</h2>
                   <div className="text-right">
                     <div className="text-xs text-gray-500">Signed in as</div>
-                    <div className="text-sm font-semibold gold-text">{user.email}</div>
+                    <div className="text-sm font-semibold gold-text">{user.phoneNumber || 'Authenticated User'}</div>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
