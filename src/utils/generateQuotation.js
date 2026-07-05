@@ -297,5 +297,14 @@ export const generateQuotation = (clientDetails, items, refNo) => {
 
   // Save
   const safeName = (clientDetails.name || 'Client').replace(/\s+/g, '_');
-  doc.save(`Rudra_Traders_Quotation_${safeName}_${refNo}.pdf`);
+  const filename = `Rudra_Traders_Quotation_${safeName}_${refNo}.pdf`;
+  
+  if (window.AndroidApp) {
+    // Mobile App WebView
+    const base64 = doc.output('datauristring').split(',')[1];
+    window.AndroidApp.downloadBase64Pdf(base64, filename);
+  } else {
+    // Normal Web Browser
+    doc.save(filename);
+  }
 };

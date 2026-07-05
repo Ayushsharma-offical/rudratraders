@@ -200,5 +200,12 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId, total
 
   // Save
   const safeName = (clientDetails.name || 'Client').replace(/\s+/g, '_');
-  doc.save(`Rudra_Traders_Payment_Receipt_${safeName}.pdf`);
+  const filename = `Rudra_Traders_Payment_Receipt_${safeName}.pdf`;
+  
+  if (window.AndroidApp) {
+    const base64 = doc.output('datauristring').split(',')[1];
+    window.AndroidApp.downloadBase64Pdf(base64, filename);
+  } else {
+    doc.save(filename);
+  }
 };
