@@ -45,6 +45,13 @@ const CartPage = () => {
       }
     });
 
+    // Initialize recaptcha after a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      if (!window.recaptchaVerifier && document.getElementById('recaptcha-container')) {
+        setupRecaptcha('recaptcha-container');
+      }
+    }, 1000);
+
     return () => {
       window.removeEventListener('cart_updated', handler);
       unsub();
@@ -58,7 +65,7 @@ const CartPage = () => {
     }
     setPhoneLoading(true);
     try {
-      const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+      const recaptchaVerifier = window.recaptchaVerifier || setupRecaptcha('recaptcha-container');
       const formattedPhone = phoneAuthNumber.startsWith('+91') ? phoneAuthNumber : `+91${phoneAuthNumber}`;
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
       setConfirmationResult(confirmation);
