@@ -681,16 +681,24 @@ const ClientRequests = () => {
               )}
 
               {/* Payment status */}
-              {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
-                <div className="flex items-center gap-2 text-green-400 font-bold text-xs mb-2 bg-green-500/10 border border-green-500/20 p-2 rounded-lg">
-                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                  {q.paymentStatus === 'Full Payment Received' ? 'Full Payment' : 'Advance'} ₹{(q.advanceAmount || 0).toLocaleString()}
+              {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received' || q.paymentStatus === 'Token Paid') && (
+                <div className="flex flex-col gap-1.5 mb-3">
+                  <div className="flex items-center gap-2 text-green-400 font-bold text-xs bg-green-500/10 border border-green-500/20 p-2 rounded-lg">
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    {q.paymentStatus === 'Full Payment Received' ? 'Full Payment' : 'Amount Paid'}: ₹{(q.advanceAmount || 0).toLocaleString()}
+                  </div>
+                  {(q.amountLeft > 0 || (q.paymentStatus !== 'Full Payment Received' && q.total - (q.advanceAmount || 0) > 0)) && (
+                    <div className="flex items-center gap-2 text-orange-400 font-bold text-xs bg-orange-500/10 border border-orange-500/20 p-2 rounded-lg">
+                      <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 text-xs">⚠️</span>
+                      Amount Left: ₹{(q.amountLeft || (q.total - (q.advanceAmount || 0))).toLocaleString()}
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Actions */}
               <div className="flex gap-2 flex-wrap">
-                {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
+                {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received' || q.paymentStatus === 'Token Paid') && (
                   <button onClick={() => handleDownloadReceipt(q)} className="flex items-center gap-1 px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg text-xs">
                     <Download className="w-3 h-3" /> Receipt
                   </button>

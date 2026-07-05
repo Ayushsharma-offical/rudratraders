@@ -24,6 +24,7 @@ const CartPage = () => {
   const [errors, setErrors] = useState({});
   const [user, setUser] = useState(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [customAmountStr, setCustomAmountStr] = useState('');
 
   useEffect(() => {
     setCart(getCart());
@@ -117,12 +118,27 @@ const CartPage = () => {
     setStep(3);
   };
 
-  const handlePayment = async () => {
+  const handlePayment = async (isFullPayment = true) => {
     setPaying(true);
     try {
-      // 1. Create order on backend (amount in paise - minimum 100)
-      const paymentAmount = Math.max(1, Math.round(total));
+      let paymentAmount = Math.max(1, Math.round(total));
       
+      if (!isFullPayment) {
+        const parsed = parseInt(customAmountStr, 10);
+        if (isNaN(parsed) || parsed < 100) {
+          alert('Minimum token amount is ₹100');
+          setPaying(false);
+          return;
+        }
+        if (parsed > paymentAmount) {
+          alert('Token amount cannot be greater than the total amount.');
+          setPaying(false);
+          return;
+        }
+        paymentAmount = parsed;
+      }
+
+      // 1. Create order on backend (amount in paise - minimum 100)
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -138,7 +154,7 @@ const CartPage = () => {
         amount: order.amount,
         currency: order.currency,
         name: "Rudra Traders",
-        description: `Full Payment for Quote #${refCounter}`,
+        description: isFullPayment ? `Full Payment for Quote #${refCounter}` : `Token Payment for Quote #${refCounter}`,
         order_id: order.order_id,
         handler: async (response) => {
           try {
@@ -167,9 +183,12 @@ const CartPage = () => {
               // Update status in RTDB
               try {
                 if (quoteId) {
+                  const statusLabel = paymentAmount >= Math.round(total) ? 'Full Payment Received' : 'Token Paid';
                   await update(ref(rtdb, `quotes/${quoteId}`), {
-                    paymentStatus: 'Full Payment Received',
+                    paymentStatus: statusLabel,
                     advanceAmount: paymentAmount, // Keeping field name for backwards compatibility
+                    totalAmount: Math.round(total),
+                    amountLeft: Math.round(total) - paymentAmount,
                     razorpay_order_id: response.razorpay_order_id,
                     razorpay_payment_id: response.razorpay_payment_id
                   });
@@ -228,10 +247,40 @@ const CartPage = () => {
         ) : (
           <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
             <h3 className="text-yellow-400 font-bold mb-2 text-lg">Confirm Your Order Now</h3>
-            <p className="text-sm text-gray-400 mb-4">Pay the full amount securely to lock current prices and prioritize your order processing.</p>
-            <button onClick={handlePayment} disabled={paying} className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
-              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Full Amount (₹{Math.max(1, Math.round(total)).toLocaleString()})</>}
+            <p className="text-sm text-gray-400 mb-4">Pay the full amount or a token amount to lock current prices and prioritize your order processing.</p>
+            
+            <button onClick={() => handlePayment(true)} disabled={paying} className="btn-gold w-full justify-center text-lg mb-4 shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
+              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Full (₹{Math.max(1, Math.round(total)).toLocaleString()})</>}
             </button>
+            
+            <div className="flex items-center gap-4 my-4">
+              <div className="h-px bg-white/10 flex-1"></div>
+              <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">OR PAY TOKEN AMOUNT</span>
+              <div className="h-px bg-white/10 flex-1"></div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <span className="flex items-center justify-center bg-black/40 border border-white/10 rounded-xl px-4 text-gray-400 font-bold">₹</span>
+                <input 
+                  type="number" 
+                  min="100" 
+                  max={Math.max(1, Math.round(total))}
+                  placeholder="Min. ₹100" 
+                  value={customAmountStr}
+                  onChange={e => setCustomAmountStr(e.target.value)}
+                  className="input-dark flex-1" 
+                  style={{ background: 'rgba(0,0,0,0.3)' }} 
+                />
+              </div>
+              <button 
+                onClick={() => handlePayment(false)} 
+                disabled={paying || !customAmountStr || parseInt(customAmountStr) < 100} 
+                className="btn-outline-gold w-full justify-center disabled:opacity-50"
+              >
+                {paying ? 'Processing...' : `Pay Token Amount`}
+              </button>
+            </div>
           </div>
         )}
 
