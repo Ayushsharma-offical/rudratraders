@@ -591,8 +591,6 @@ const CartPage = () => {
                     Pay Full / Advance Payment (Skip Quotation)
                   </button>
                 </div>
-              </>
-            )}
           </div>
 
           {/* Summary */}
