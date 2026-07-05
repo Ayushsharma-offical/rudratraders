@@ -24,6 +24,9 @@ const CartPage = () => {
   const [errors, setErrors] = useState({});
   const [user, setUser] = useState(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [customAmountStr, setCustomAmountStr] = useState('');
+  const [showTerms, setShowTerms] = useState(false);
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [skipQuotation, setSkipQuotation] = useState(false);
   useEffect(() => {
     setCart(getCart());
