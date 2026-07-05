@@ -4,8 +4,8 @@ import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, L
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
 import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
-import { auth, rtdb, setupRecaptcha } from '../firebase';
-import { signInWithPhoneNumber } from 'firebase/auth';
+import { auth, rtdb } from '../firebase';
+import { signInAnonymously } from 'firebase/auth';
 import { ref, push, update } from 'firebase/database';
 import SEO from '../components/SEO';
 
@@ -24,78 +24,26 @@ const CartPage = () => {
   const [errors, setErrors] = useState({});
   const [user, setUser] = useState(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
-  const [customAmountStr, setCustomAmountStr] = useState('');
-  const [showTerms, setShowTerms] = useState(false);
-  const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [skipQuotation, setSkipQuotation] = useState(false);
-  const [phoneAuthNumber, setPhoneAuthNumber] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState(null);
-  const [otpSent, setOtpSent] = useState(false);
-  const [phoneLoading, setPhoneLoading] = useState(false);
   useEffect(() => {
     setCart(getCart());
     const handler = () => setCart(getCart());
     window.addEventListener('cart_updated', handler);
     
     const unsub = auth.onAuthStateChanged(u => {
-      setUser(u);
-      if (u && !client.name) {
-        setClient(prev => ({ ...prev, name: u.displayName || '' }));
+      if (u) {
+        setUser(u);
+      } else {
+        // Sign in anonymously in the background so Firebase DB rules still work
+        signInAnonymously(auth).catch(console.error);
       }
     });
-
-    // Initialize recaptcha after a slight delay to ensure DOM is ready
-    setTimeout(() => {
-      if (!window.recaptchaVerifier && document.getElementById('recaptcha-container')) {
-        setupRecaptcha('recaptcha-container');
-      }
-    }, 1000);
 
     return () => {
       window.removeEventListener('cart_updated', handler);
       unsub();
     };
   }, []);
-
-  const handleSendOtp = async () => {
-    if (!phoneAuthNumber || phoneAuthNumber.length < 10) {
-      alert("Please enter a valid 10-digit mobile number");
-      return;
-    }
-    setPhoneLoading(true);
-    try {
-      const recaptchaVerifier = window.recaptchaVerifier || setupRecaptcha('recaptcha-container');
-      const formattedPhone = phoneAuthNumber.startsWith('+91') ? phoneAuthNumber : `+91${phoneAuthNumber}`;
-      const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
-      setConfirmationResult(confirmation);
-      setOtpSent(true);
-      setClient(prev => ({ ...prev, phone: phoneAuthNumber })); // prefill phone
-    } catch (error) {
-      console.error("OTP Send Error:", error);
-      alert("Could not send OTP. Please try again.");
-    } finally {
-      setPhoneLoading(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    if (!otpCode || otpCode.length !== 6) {
-      alert("Please enter the 6-digit OTP");
-      return;
-    }
-    setPhoneLoading(true);
-    try {
-      const result = await confirmationResult.confirm(otpCode);
-      setUser(result.user);
-      // login successful, the onAuthStateChanged will handle the rest
-    } catch (error) {
-      console.error("OTP Verify Error:", error);
-      alert("Invalid OTP. Please try again.");
-    } finally {
-      setPhoneLoading(false);
-    }
-  };
 
   const handleRemove = (id) => { removeFromCart(id); setCart(getCart()); };
   const handleQty = (id, qty) => { updateQty(id, qty); setCart(getCart()); };
@@ -591,74 +539,14 @@ const CartPage = () => {
 
       {step === 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Form or Google Login */}
+          {/* Form */}
           <div className="lg:col-span-2 glass-card p-8 rounded-2xl hover-float">
-            {!user ? (
-              <div className="text-center py-16 max-w-sm mx-auto">
-                <div className="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <LogIn className="w-8 h-8 text-yellow-400" />
-                </div>
-                <h2 className="text-2xl font-bold text-white mb-3">Sign In to Continue</h2>
-                <p className="text-gray-400 mb-8">Please sign in with your mobile number to securely store your quotation details and follow up with you.</p>
-                
-                <div id="recaptcha-container"></div>
-                
-                {!otpSent ? (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      <span className="flex items-center justify-center bg-black/40 border border-white/10 rounded-xl px-4 text-gray-400 font-bold">+91</span>
-                      <input 
-                        type="tel" 
-                        placeholder="10-digit mobile number" 
-                        value={phoneAuthNumber}
-                        onChange={e => setPhoneAuthNumber(e.target.value)}
-                        className="input-dark flex-1 text-center text-lg tracking-widest" 
-                        style={{ background: 'rgba(0,0,0,0.3)' }}
-                        maxLength="10"
-                      />
-                    </div>
-                    <button 
-                      onClick={handleSendOtp} 
-                      disabled={phoneLoading || !phoneAuthNumber}
-                      className="btn-gold w-full justify-center shadow-lg"
-                    >
-                      {phoneLoading ? 'Sending OTP...' : 'Send OTP'}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <p className="text-sm text-green-400 font-medium bg-green-500/10 p-2 rounded-lg inline-block mb-2">OTP sent to +91 {phoneAuthNumber}</p>
-                    <input 
-                      type="number" 
-                      placeholder="Enter 6-digit OTP" 
-                      value={otpCode}
-                      onChange={e => setOtpCode(e.target.value)}
-                      className="input-dark w-full text-center text-xl tracking-[0.5em]" 
-                      style={{ background: 'rgba(0,0,0,0.3)' }}
-                      maxLength="6"
-                    />
-                    <button 
-                      onClick={handleVerifyOtp} 
-                      disabled={phoneLoading || !otpCode}
-                      className="btn-gold w-full justify-center shadow-lg"
-                    >
-                      {phoneLoading ? 'Verifying...' : 'Verify & Continue'}
-                    </button>
-                    <button onClick={() => setOtpSent(false)} className="text-sm text-gray-400 hover:text-white mt-2 block w-full">Change Mobile Number</button>
-                  </div>
-                )}
-                
-                <button onClick={() => setStep(1)} className="mt-8 text-sm text-gray-500 hover:text-white transition-colors">
-                  &larr; Back to Cart
-                </button>
-              </div>
-            ) : (
-              <>
                 <div className="flex justify-between items-start mb-8">
                   <h2 className="text-xl font-bold text-white">Your Details</h2>
                   <div className="text-right">
-                    <div className="text-xs text-gray-500">Signed in as</div>
-                    <div className="text-sm font-semibold gold-text">{user.phoneNumber || 'Authenticated User'}</div>
+                    <button onClick={() => setStep(1)} className="text-sm text-gray-500 hover:text-white transition-colors">
+                      &larr; Back to Cart
+                    </button>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
