@@ -27,6 +27,7 @@ const CartPage = () => {
   const [customAmountStr, setCustomAmountStr] = useState('');
   const [showTerms, setShowTerms] = useState(false);
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
+  const [skipQuotation, setSkipQuotation] = useState(false);
   useEffect(() => {
     setCart(getCart());
     const handler = () => setCart(getCart());
@@ -75,6 +76,46 @@ const CartPage = () => {
   const handleProceedToQuotation = () => {
     if (!validate()) return;
     setShowTerms(true);
+  };
+
+  const handleSkipQuotation = async () => {
+    if (!validate()) return;
+    refCounter++;
+    localStorage.setItem('rudra_ref', refCounter);
+    
+    const items = cart.map(i => ({
+      description: String(i.name || 'Machinery Item'),
+      quantity: Number(i.quantity) || 1,
+      rate: Number(i.price) || 0
+    }));
+    const safeClient = {
+      name: client.name || 'Client',
+      careOf: client.careOf || '',
+      address: client.address || '',
+      pincode: client.pincode || '',
+      phone: client.phone || '',
+      projectType: client.projectType || 'Machinery Unit',
+    };
+
+    try {
+      const newQuoteRef = await push(ref(rtdb, 'quotes'), {
+        userId: user ? user.uid : 'guest',
+        clientDetails: safeClient,
+        items: items,
+        refNo: refCounter.toString(),
+        subtotal,
+        gst,
+        total,
+        paymentStatus: 'Pending',
+        createdAt: new Date().toISOString()
+      });
+      setQuoteId(newQuoteRef.key);
+    } catch (err) {
+      console.error('Error saving quote:', err);
+    }
+    
+    setSkipQuotation(true);
+    setStep(3);
   };
 
   const handleQuotationFeePayment = async () => {
@@ -292,13 +333,19 @@ const CartPage = () => {
   if (step === 3) return (
     <div className="pt-32 min-h-screen flex items-center justify-center px-6">
       <div className="glass-card p-6 md:p-12 rounded-3xl text-center max-w-lg w-full">
-        <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-          <CheckCircle2 className="w-10 h-10 text-green-400" />
-        </div>
-        <h2 className="text-2xl md:text-3xl font-black text-white mb-3">Payment Successful!</h2>
-        <p className="text-gray-400 mb-8">Your ₹20 quotation fee was received successfully.</p>
+        {(!skipQuotation || paymentSuccess) && (
+          <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-10 h-10 text-green-400" />
+          </div>
+        )}
+        
+        <h2 className="text-2xl md:text-3xl font-black text-white mb-3">
+          {paymentSuccess ? 'Payment Successful!' : (!skipQuotation ? 'Payment Successful!' : 'Complete Your Order')}
+        </h2>
+        
+        {!skipQuotation && <p className="text-gray-400 mb-8">Your ₹20 quotation fee was received successfully.</p>}
 
-        {!pdfDownloaded ? (
+        {(!pdfDownloaded && !skipQuotation) ? (
           <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
              <h3 className="text-yellow-400 font-bold mb-2 text-lg">Your Quotation is Ready</h3>
              <p className="text-sm text-gray-400 mb-4">Click below to generate and download your PDF.</p>
@@ -316,9 +363,11 @@ const CartPage = () => {
           </div>
         ) : (
           <>
-            <div className="mb-8 p-3 bg-green-500/10 border border-green-500/20 rounded-xl inline-flex items-center gap-2 text-green-400 text-sm font-bold">
-              <CheckCircle2 className="w-4 h-4" /> Quotation PDF Downloaded
-            </div>
+            {!skipQuotation && (
+              <div className="mb-8 p-3 bg-green-500/10 border border-green-500/20 rounded-xl inline-flex items-center gap-2 text-green-400 text-sm font-bold">
+                <CheckCircle2 className="w-4 h-4" /> Quotation PDF Downloaded
+              </div>
+            )}
             {paymentSuccess ? (
               <div className="mb-8 p-4 bg-green-500/10 border border-green-500/30 rounded-2xl">
                 <h3 className="text-green-400 font-bold mb-1">Payment Received</h3>
@@ -561,12 +610,17 @@ const CartPage = () => {
                     <input type="text" className="input-dark" placeholder="e.g. Bakery Processing Unit, Poultry Farm Unit" value={client.projectType} onChange={e => setClient({...client, projectType: e.target.value})} />
                   </div>
                 </div>
-                <div className="flex gap-4 mt-8">
-                  <button onClick={() => setStep(1)} className="btn-outline-gold">
-                    <ArrowLeft className="w-4 h-4" /> Back
-                  </button>
-                  <button onClick={handleProceedToQuotation} className="btn-gold flex-1 justify-center text-sm md:text-base">
-                    Proceed to Generate (₹20)
+                <div className="flex flex-col gap-3 mt-8">
+                  <div className="flex gap-4">
+                    <button onClick={() => setStep(1)} className="btn-outline-gold">
+                      <ArrowLeft className="w-4 h-4" /> Back
+                    </button>
+                    <button onClick={handleProceedToQuotation} className="btn-gold flex-1 justify-center text-sm md:text-base text-center break-words">
+                      Proceed to generate quotation (Pay ₹20)
+                    </button>
+                  </div>
+                  <button onClick={handleSkipQuotation} className="btn-outline-gold w-full justify-center text-sm md:text-base border-gray-600 text-gray-300 hover:border-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all">
+                    Pay Full / Advance (Skip Quotation)
                   </button>
                 </div>
               </>

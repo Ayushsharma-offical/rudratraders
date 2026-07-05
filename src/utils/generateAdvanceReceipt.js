@@ -50,7 +50,7 @@ const numberToWords = (num) => {
   return words.trim();
 };
 
-export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId) => {
+export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId, totalAmount = amountPaid) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
   const margin = 15;
@@ -125,12 +125,19 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId) => {
   doc.text('Payment Summary', margin, y);
   y += 8;
 
+  const tableBody = [];
+  if (totalAmount > amountPaid) {
+    tableBody.push(['Total Order Value', `Rs. ${formatCurrency(totalAmount)}`]);
+    tableBody.push([`Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]);
+    tableBody.push(['Amount Pending', `Rs. ${formatCurrency(totalAmount - amountPaid)}`]);
+  } else {
+    tableBody.push([`Full Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]);
+  }
+
   autoTable(doc, {
     startY: y,
     head: [['Description', 'Amount (INR)']],
-    body: [
-      [`Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]
-    ],
+    body: tableBody,
     theme: 'grid',
     headStyles: {
       fillColor: [26, 54, 54],
