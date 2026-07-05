@@ -1,33 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+
+  <!-- Homepage – Highest Priority -->
   <url>
     <loc>https://rudratraders.in/</loc>
-    <lastmod>2026-07-04</lastmod>
+    <lastmod>2026-07-05</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://rudratraders.in/hero-image.png</image:loc>
+      <image:title>Rudra Traders – India's #1 MSME Machinery Supplier</image:title>
+      <image:caption>MSME Machinery specialists – poultry feed machines, flour mills, oil expellers and more</image:caption>
+    </image:image>
   </url>
+
+  <!-- Products / Machinery Catalog – Very High Priority -->
   <url>
     <loc>https://rudratraders.in/products</loc>
-    <lastmod>2026-07-04</lastmod>
+    <lastmod>2026-07-05</lastmod>
     <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://rudratraders.in/hero-image.png</image:loc>
+      <image:title>200+ MSME Machines – Rudra Traders Product Catalog</image:title>
+      <image:caption>Browse poultry feed machines, flour mills, oil expellers, dal mills, spice grinders and more</image:caption>
+    </image:image>
   </url>
+
+  <!-- Cart / Quotation Page -->
   <url>
-    <loc>https://rudratraders.in/machinery</loc>
-    <lastmod>2026-07-04</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>0.9</priority>
+    <loc>https://rudratraders.in/cart</loc>
+    <lastmod>2026-07-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.85</priority>
   </url>
+
+  <!-- About Page -->
   <url>
     <loc>https://rudratraders.in/about</loc>
-    <lastmod>2026-07-04</lastmod>
+    <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.80</priority>
   </url>
+
+  <!-- Contact Page -->
   <url>
     <loc>https://rudratraders.in/contact</loc>
-    <lastmod>2026-07-04</lastmod>
+    <lastmod>2026-07-05</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
+    <priority>0.80</priority>
   </url>
+
 </urlset>
