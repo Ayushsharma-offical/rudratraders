@@ -5,7 +5,7 @@ import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery
 import { generateQuotation } from '../utils/generateQuotation';
 import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
 import { auth, provider, rtdb } from '../firebase';
-import { signInWithPopup } from 'firebase/auth';
+import { signInWithRedirect, getRedirectResult } from 'firebase/auth';
 import { ref, push, update } from 'firebase/database';
 import SEO from '../components/SEO';
 
@@ -33,6 +33,16 @@ const CartPage = () => {
     const handler = () => setCart(getCart());
     window.addEventListener('cart_updated', handler);
     
+    // Handle Google redirect result (for WebView / mobile where popup is blocked)
+    getRedirectResult(auth).then(result => {
+      if (result?.user) {
+        setUser(result.user);
+        setClient(prev => ({ ...prev, name: result.user.displayName || '' }));
+      }
+    }).catch(err => {
+      console.error('Redirect result error:', err);
+    });
+    
     const unsub = auth.onAuthStateChanged(u => {
       setUser(u);
       if (u && !client.name) {
@@ -49,12 +59,15 @@ const CartPage = () => {
   const handleGoogleLogin = async () => {
     setLoadingGoogle(true);
     try {
-      await signInWithPopup(auth, provider);
+      // signInWithRedirect works in all environments including WebView/Android
+      // It redirects to Google, user signs in, then returns back to the app
+      await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error("Google Sign-In Error:", error);
-    } finally {
       setLoadingGoogle(false);
     }
+    // Note: setLoadingGoogle(false) not called here intentionally
+    // because the page will redirect away and come back
   };
 
   const handleRemove = (id) => { removeFromCart(id); setCart(getCart()); };
