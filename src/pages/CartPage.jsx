@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn, CreditCard } from 'lucide-react';
+import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn, CreditCard, X } from 'lucide-react';
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
 import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
@@ -25,7 +25,8 @@ const CartPage = () => {
   const [user, setUser] = useState(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [customAmountStr, setCustomAmountStr] = useState('');
-
+  const [showTerms, setShowTerms] = useState(false);
+  const [pdfDownloaded, setPdfDownloaded] = useState(false);
   useEffect(() => {
     setCart(getCart());
     const handler = () => setCart(getCart());
@@ -71,51 +72,110 @@ const CartPage = () => {
     return Object.keys(e).length === 0;
   };
 
-  const handleGenerate = async () => {
+  const handleProceedToQuotation = () => {
     if (!validate()) return;
-    refCounter++;
-    localStorage.setItem('rudra_ref', refCounter);
-    const items = cart.map(i => ({
-      description: String(i.name || 'Machinery Item'),
-      quantity: Number(i.quantity) || 1,
-      rate: Number(i.price) || 0
-    }));
-    const safeClient = {
-      name: client.name || 'Client',
-      careOf: client.careOf || '',
-      address: client.address || '',
-      pincode: client.pincode || '',
-      phone: client.phone || '',
-      projectType: client.projectType || 'Machinery Unit',
-    };
+    setShowTerms(true);
+  };
 
-    // Save to Realtime Database
+  const handleQuotationFeePayment = async () => {
+    setPaying(true);
     try {
-      const newQuoteRef = await push(ref(rtdb, 'quotes'), {
-        userId: user ? user.uid : 'guest',
-        clientDetails: safeClient,
-        items: items,
-        refNo: refCounter.toString(),
-        subtotal,
-        gst,
-        total,
-        createdAt: new Date().toISOString()
+      refCounter++;
+      localStorage.setItem('rudra_ref', refCounter);
+      
+      const res = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: 2000, receipt: refCounter.toString() })
       });
-      setQuoteId(newQuoteRef.key);
-    } catch (err) {
-      console.error('Error saving quote to database:', err);
-    }
+      
+      const order = await res.json();
+      if (!order || order.error) throw new Error(order.error || 'Failed to create order');
 
-    // Generate PDF
-    try {
-      generateQuotation(safeClient, items, refCounter.toString());
-    } catch (pdfErr) {
-      console.error('PDF generation error:', pdfErr);
-      alert('There was an error generating the PDF. Please try again.');
-      return;
-    }
+      const options = {
+        key: 'rzp_live_T6bASddyHt5W3K',
+        amount: order.amount,
+        currency: order.currency,
+        name: "Rudra Traders",
+        description: `Quotation Fee for Quote #${refCounter}`,
+        order_id: order.order_id,
+        handler: async (response) => {
+          try {
+            const verifyRes = await fetch('/api/verify-payment', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const result = await verifyRes.json();
+            
+            if (result.success) {
+              const items = cart.map(i => ({
+                description: String(i.name || 'Machinery Item'),
+                quantity: Number(i.quantity) || 1,
+                rate: Number(i.price) || 0
+              }));
+              const safeClient = {
+                name: client.name || 'Client',
+                careOf: client.careOf || '',
+                address: client.address || '',
+                pincode: client.pincode || '',
+                phone: client.phone || '',
+                projectType: client.projectType || 'Machinery Unit',
+              };
 
-    setStep(3);
+              try {
+                const newQuoteRef = await push(ref(rtdb, 'quotes'), {
+                  userId: user ? user.uid : 'guest',
+                  clientDetails: safeClient,
+                  items: items,
+                  refNo: refCounter.toString(),
+                  subtotal,
+                  gst,
+                  total,
+                  quotationFeePaid: true,
+                  paymentStatus: 'Quotation Generated',
+                  createdAt: new Date().toISOString()
+                });
+                setQuoteId(newQuoteRef.key);
+              } catch (err) {
+                console.error('Error saving quote:', err);
+              }
+
+              setShowTerms(false);
+              setStep(3);
+            } else {
+              alert('Payment Verification Failed!');
+            }
+          } catch (err) {
+            console.error('Verify error:', err);
+            alert('Verification Error. Please contact support.');
+          }
+        },
+        prefill: {
+          name: client.name || '',
+          contact: client.phone || '',
+        },
+        theme: {
+          color: "#d4af37"
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response){
+        alert('Payment Failed: ' + response.error.description);
+      });
+      rzp.open();
+
+    } catch (error) {
+      console.error('Payment initiation error:', error);
+      alert('Could not start payment: ' + error.message);
+    } finally {
+      setPaying(false);
+    }
   };
 
   const handlePayment = async (isFullPayment = true) => {
@@ -231,61 +291,83 @@ const CartPage = () => {
 
   if (step === 3) return (
     <div className="pt-32 min-h-screen flex items-center justify-center px-6">
-      <div className="glass-card p-12 rounded-3xl text-center max-w-lg w-full">
-        <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+      <div className="glass-card p-6 md:p-12 rounded-3xl text-center max-w-lg w-full">
+        <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle2 className="w-10 h-10 text-green-400" />
         </div>
-        <h2 className="text-3xl font-black text-white mb-3">Quotation Ready!</h2>
-        <p className="text-gray-400 mb-2">Your PDF quotation has been downloaded successfully.</p>
-        <p className="text-gray-500 text-sm mb-8">Your quote has been saved to our database. Our team will contact you within 24 hours.</p>
-        
-        {paymentSuccess ? (
-          <div className="mb-8 p-4 bg-green-500/10 border border-green-500/30 rounded-2xl">
-            <h3 className="text-green-400 font-bold mb-1">Full Payment Received</h3>
-            <p className="text-sm text-green-500/70">Your order is now confirmed and fully paid. We will process it immediately.</p>
+        <h2 className="text-2xl md:text-3xl font-black text-white mb-3">Payment Successful!</h2>
+        <p className="text-gray-400 mb-8">Your ₹20 quotation fee was received successfully.</p>
+
+        {!pdfDownloaded ? (
+          <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
+             <h3 className="text-yellow-400 font-bold mb-2 text-lg">Your Quotation is Ready</h3>
+             <p className="text-sm text-gray-400 mb-4">Click below to generate and download your PDF.</p>
+             <button onClick={() => {
+                 const items = cart.map(i => ({
+                   description: String(i.name || 'Machinery Item'),
+                   quantity: Number(i.quantity) || 1,
+                   rate: Number(i.price) || 0
+                 }));
+                 generateQuotation(client, items, refCounter.toString());
+                 setPdfDownloaded(true);
+             }} className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)]">
+                <Download className="w-5 h-5" /> Download Quotation PDF
+             </button>
           </div>
         ) : (
-          <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
-            <h3 className="text-yellow-400 font-bold mb-2 text-lg">Confirm Your Order Now</h3>
-            <p className="text-sm text-gray-400 mb-4">Pay the full amount or a token amount to lock current prices and prioritize your order processing.</p>
-            
-            <button onClick={() => handlePayment(true)} disabled={paying} className="btn-gold w-full justify-center text-lg mb-4 shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
-              {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Full (₹{Math.max(1, Math.round(total)).toLocaleString()})</>}
-            </button>
-            
-            <div className="flex items-center gap-4 my-4">
-              <div className="h-px bg-white/10 flex-1"></div>
-              <span className="text-gray-500 text-xs font-bold uppercase tracking-wider">OR PAY TOKEN AMOUNT</span>
-              <div className="h-px bg-white/10 flex-1"></div>
+          <>
+            <div className="mb-8 p-3 bg-green-500/10 border border-green-500/20 rounded-xl inline-flex items-center gap-2 text-green-400 text-sm font-bold">
+              <CheckCircle2 className="w-4 h-4" /> Quotation PDF Downloaded
             </div>
-
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <span className="flex items-center justify-center bg-black/40 border border-white/10 rounded-xl px-4 text-gray-400 font-bold">₹</span>
-                <input 
-                  type="number" 
-                  min="100" 
-                  max={Math.max(1, Math.round(total))}
-                  placeholder="Min. ₹100" 
-                  value={customAmountStr}
-                  onChange={e => setCustomAmountStr(e.target.value)}
-                  className="input-dark flex-1" 
-                  style={{ background: 'rgba(0,0,0,0.3)' }} 
-                />
+            {paymentSuccess ? (
+              <div className="mb-8 p-4 bg-green-500/10 border border-green-500/30 rounded-2xl">
+                <h3 className="text-green-400 font-bold mb-1">Payment Received</h3>
+                <p className="text-sm text-green-500/70">Your order is confirmed. We will process it immediately.</p>
               </div>
-              <button 
-                onClick={() => handlePayment(false)} 
-                disabled={paying || !customAmountStr || parseInt(customAmountStr) < 100} 
-                className="btn-outline-gold w-full justify-center disabled:opacity-50"
-              >
-                {paying ? 'Processing...' : `Pay Token Amount`}
-              </button>
-            </div>
-          </div>
+            ) : (
+              <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
+                <h3 className="text-yellow-400 font-bold mb-2 text-lg">Confirm Your Order Now</h3>
+                <p className="text-sm text-gray-400 mb-4">Pay the full amount or a token amount to lock current prices and prioritize your order processing.</p>
+                
+                <button onClick={() => handlePayment(true)} disabled={paying} className="btn-gold w-full justify-center text-base mb-4 shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
+                  {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Full (₹{Math.max(1, Math.round(total)).toLocaleString()})</>}
+                </button>
+                
+                <div className="flex items-center gap-4 my-4">
+                  <div className="h-px bg-white/10 flex-1"></div>
+                  <span className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">OR PAY TOKEN</span>
+                  <div className="h-px bg-white/10 flex-1"></div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <span className="flex items-center justify-center bg-black/40 border border-white/10 rounded-xl px-4 text-gray-400 font-bold">₹</span>
+                    <input 
+                      type="number" 
+                      min="100" 
+                      max={Math.max(1, Math.round(total))}
+                      placeholder="Min. ₹100" 
+                      value={customAmountStr}
+                      onChange={e => setCustomAmountStr(e.target.value)}
+                      className="input-dark flex-1" 
+                      style={{ background: 'rgba(0,0,0,0.3)' }} 
+                    />
+                  </div>
+                  <button 
+                    onClick={() => handlePayment(false)} 
+                    disabled={paying || !customAmountStr || parseInt(customAmountStr) < 100} 
+                    className="btn-outline-gold w-full justify-center text-sm sm:text-base disabled:opacity-50"
+                  >
+                    {paying ? 'Processing...' : `Pay Token Amount`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         <div className="space-y-3">
-          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); setPaymentSuccess(false); }} className="btn-outline-gold w-full justify-center">
+          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); setPaymentSuccess(false); setPdfDownloaded(false); }} className="btn-outline-gold w-full justify-center">
             Start New Quote
           </button>
           <button onClick={() => navigate('/products')} className="btn-outline-gold w-full justify-center" style={{ background: 'transparent' }}>
@@ -483,8 +565,8 @@ const CartPage = () => {
                   <button onClick={() => setStep(1)} className="btn-outline-gold">
                     <ArrowLeft className="w-4 h-4" /> Back
                   </button>
-                  <button onClick={handleGenerate} className="btn-gold flex-1 justify-center">
-                    <Download className="w-5 h-5" /> Generate & Download Quotation
+                  <button onClick={handleProceedToQuotation} className="btn-gold flex-1 justify-center text-sm md:text-base">
+                    Proceed to Generate (₹20)
                   </button>
                 </div>
               </>
@@ -507,6 +589,37 @@ const CartPage = () => {
               <span className="gold-text">₹{total.toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span>
             </div>
             <p className="text-xs text-gray-600 mt-3">Inclusive of GST @18%</p>
+          </div>
+        </div>
+      )}
+
+      {/* Terms & Conditions Modal */}
+      {showTerms && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="glass-card p-6 md:p-8 rounded-3xl max-w-md w-full border border-yellow-500/30 shadow-[0_0_40px_rgba(212,175,55,0.15)] relative">
+            <button onClick={() => setShowTerms(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+            <h2 className="text-xl md:text-2xl font-black text-white mb-4 text-center">Terms & Conditions</h2>
+            <div className="space-y-4 mb-6">
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                <p className="text-sm md:text-base text-gray-200 leading-relaxed font-medium">
+                  यह ₹20 शुल्क वापस नहीं किया जाएगा (Non-refundable)। इसका मतलब यह नहीं है कि आपने मशीन खरीद ली है या यह आपके घर भेजी जाएगी। यह केवल कोटेशन (Quotation) प्राप्त करने के लिए है।
+                </p>
+              </div>
+              <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+                <p className="text-sm md:text-base text-gray-400 leading-relaxed">
+                  This ₹20 fee is strictly non-refundable. Paying this does not mean you own the machine or that it will be delivered. It is solely a processing fee to generate your quotation.
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={handleQuotationFeePayment} 
+              disabled={paying}
+              className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50"
+            >
+              {paying ? 'Processing...' : 'Proceed & Pay ₹20'}
+            </button>
           </div>
         </div>
       )}
