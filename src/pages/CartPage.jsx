@@ -248,7 +248,7 @@ const CartPage = () => {
   );
 
   return (
-    <div className="pt-28 min-h-screen pb-20">
+    <div className="min-h-screen pb-20 pt-6">
       <SEO 
         title="Your Cart & Checkout"
         description="Review your selected items and complete your order with Rudra Traders securely."
@@ -295,27 +295,38 @@ const CartPage = () => {
             ) : (
               <div className="space-y-4">
                 {cart.map(item => (
-                  <div key={item.id} className="glass-card p-5 rounded-2xl flex gap-4 items-center">
-                    <img src={item.image} alt={item.name} className="w-20 h-20 rounded-xl object-cover opacity-80 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs text-yellow-500/70 font-medium uppercase mb-1">{item.category}</div>
-                      <h3 className="font-bold text-white text-sm leading-snug">{item.name}</h3>
-                      <div className="text-yellow-400 font-black mt-1">₹{item.price.toLocaleString()}</div>
+                  <div key={item.id} className="glass-card p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row gap-4 sm:items-center">
+                    <div className="flex gap-4 items-center flex-1 min-w-0">
+                      <img src={item.image} alt={item.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover opacity-80 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-yellow-500/70 font-medium uppercase mb-0.5 sm:mb-1 truncate">{item.category}</div>
+                        <h3 className="font-bold text-white text-sm leading-snug line-clamp-2 sm:line-clamp-none">{item.name}</h3>
+                        <div className="text-yellow-400 font-black text-sm sm:text-base mt-0.5 sm:mt-1">₹{item.price.toLocaleString()}</div>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button onClick={() => handleQty(item.id, item.quantity - 1)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-yellow-500/20 text-white flex items-center justify-center transition-all">
-                        <Minus className="w-3 h-3" />
-                      </button>
-                      <span className="w-8 text-center font-bold text-white">{item.quantity}</span>
-                      <button onClick={() => handleQty(item.id, item.quantity + 1)} className="w-8 h-8 rounded-full bg-white/5 hover:bg-yellow-500/20 text-white flex items-center justify-center transition-all">
-                        <Plus className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="font-bold text-yellow-300 text-sm">₹{(item.price * item.quantity).toLocaleString()}</div>
-                      <button onClick={() => handleRemove(item.id)} className="mt-2 text-red-400 hover:text-red-300 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    
+                    <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t border-white/5 sm:border-t-0 pt-3 sm:pt-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <button
+                          onClick={() => handleQty(item.id, item.quantity - 1)}
+                          className="w-8 h-8 sm:w-8 sm:h-8 rounded-full bg-white/5 hover:bg-yellow-500/20 text-white flex items-center justify-center transition-all border border-white/10 sm:border-transparent"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="w-6 sm:w-8 text-center font-bold text-white text-sm sm:text-base">{item.quantity}</span>
+                        <button
+                          onClick={() => handleQty(item.id, item.quantity + 1)}
+                          className="w-8 h-8 sm:w-8 sm:h-8 rounded-full bg-white/5 hover:bg-yellow-500/20 text-white flex items-center justify-center transition-all border border-white/10 sm:border-transparent"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                      <div className="text-right flex items-center sm:block gap-4">
+                        <div className="font-bold text-yellow-300 text-sm sm:text-base">₹{(item.price * item.quantity).toLocaleString()}</div>
+                        <button onClick={() => handleRemove(item.id)} className="w-8 h-8 sm:w-auto sm:h-auto sm:mt-2 flex items-center justify-center text-red-400 hover:text-red-300 transition-colors">
+                          <Trash2 className="w-4 h-4 sm:w-4 sm:h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}

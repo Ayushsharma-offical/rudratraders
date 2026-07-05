@@ -34,16 +34,16 @@ const Navbar = () => {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 transition-all duration-300 py-3 px-4 bg-[#2D1C11]/85 backdrop-blur-md shadow-lg border-b border-white/10">
-      <div className="max-w-7xl mx-auto">
+    <nav className="sticky top-0 z-50 transition-all duration-300 bg-[#2D1C11]/95 backdrop-blur-md shadow-lg border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
           
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-[#274c43] flex items-center justify-center text-white font-medium text-lg">
+          <Link to="/" className="flex items-center gap-2.5" onClick={() => setMobileOpen(false)}>
+            <div className="w-9 h-9 rounded-lg bg-[#274c43] flex items-center justify-center text-white font-medium text-base flex-shrink-0">
               R
             </div>
-            <span className="text-xl font-medium text-white">Rudra Traders</span>
+            <span className="text-lg font-medium text-white leading-tight">Rudra<br/><span className="text-xs text-gray-400 font-normal">Traders</span></span>
           </Link>
 
           {/* Desktop Links - Centered */}
@@ -64,24 +64,24 @@ const Navbar = () => {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button className="text-gray-300 hover:text-white transition-colors hidden md:block">
               <Search className="w-5 h-5" />
             </button>
 
-            {/* Admin Button — always visible on ALL screen sizes */}
+            {/* Admin Button */}
             <button
-              onClick={() => navigate('/admin')}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wider border border-red-500/30"
+              onClick={() => { navigate('/admin'); setMobileOpen(false); }}
+              className="flex items-center gap-1 px-2 py-1.5 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all text-xs font-bold uppercase tracking-wider border border-red-500/30"
               title="Admin Portal"
             >
-              <Lock className="w-3 h-3" />
+              <Lock className="w-3 h-3 flex-shrink-0" />
               <span className="hidden sm:inline">Admin</span>
             </button>
 
             {/* Cart */}
             <button
-              onClick={() => navigate('/cart')}
+              onClick={() => { navigate('/cart'); setMobileOpen(false); }}
               className="relative text-gray-300 hover:text-white transition-colors"
             >
               <ShoppingCart className="w-5 h-5" />
@@ -95,48 +95,47 @@ const Navbar = () => {
             {/* Order Now — desktop only */}
             <button
               onClick={() => navigate('/cart')}
-              className="hidden md:flex btn-green"
+              className="hidden md:flex btn-green text-sm px-4 py-2"
             >
               Order Now <ArrowRight className="w-4 h-4" />
             </button>
 
             {/* Hamburger — mobile only */}
-            <button className="md:hidden text-gray-300" onClick={() => setMobileOpen(!mobileOpen)}>
+            <button className="md:hidden text-gray-300 ml-1" onClick={() => setMobileOpen(!mobileOpen)}>
               {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
-
-        {/* Mobile Dropdown Menu */}
-        {mobileOpen && (
-          <div className="md:hidden pt-4 pb-2">
-            {links.map(l => (
-              <Link
-                key={l.to}
-                to={l.to}
-                onClick={() => setMobileOpen(false)}
-                className="block px-2 py-3 text-gray-300 hover:text-white border-b border-white/5"
-              >
-                {l.label}
-              </Link>
-            ))}
-            {/* Admin Portal in mobile dropdown */}
-            <Link
-              to="/admin"
-              onClick={() => setMobileOpen(false)}
-              className="block px-2 py-3 font-bold uppercase border-b border-white/5"
-              style={{ color: '#f87171', background: 'rgba(239,68,68,0.1)' }}
-            >
-              🔒 Admin Portal
-            </Link>
-            <div className="pt-4">
-              <button onClick={() => { navigate('/cart'); setMobileOpen(false); }} className="btn-green w-full justify-center">
-                Order Now <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Mobile Dropdown Menu — absolutely positioned so it overlays content */}
+      {mobileOpen && (
+        <div
+          className="md:hidden absolute left-0 right-0 top-full z-50 shadow-2xl border-t border-white/10"
+          style={{ background: 'rgba(30, 16, 8, 0.98)', backdropFilter: 'blur(20px)' }}
+        >
+          {links.map(l => (
+            <Link
+              key={l.to}
+              to={l.to}
+              onClick={() => setMobileOpen(false)}
+              className={`flex items-center px-5 py-3.5 text-sm font-medium border-b border-white/5 transition-colors ${
+                pathname === l.to ? 'text-[#F05A5A]' : 'text-gray-300 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
+          <div className="p-4">
+            <button
+              onClick={() => { navigate('/cart'); setMobileOpen(false); }}
+              className="btn-green w-full justify-center"
+            >
+              Order Now <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

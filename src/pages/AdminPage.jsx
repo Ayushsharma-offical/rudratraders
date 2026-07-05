@@ -71,9 +71,9 @@ const AdminLogin = () => {
 };
 
 // ============================================================
-// SIDEBAR
+// SIDEBAR (responsive: drawer on mobile, inline on desktop)
 // ============================================================
-const Sidebar = ({ active, setActive, onLogout }) => {
+const Sidebar = ({ active, setActive, onLogout, open, setOpen }) => {
   const items = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'catalog', label: 'Machinery Catalog', icon: Package },
@@ -81,38 +81,68 @@ const Sidebar = ({ active, setActive, onLogout }) => {
     { id: 'requests', label: 'Client Requests', icon: Users },
   ];
 
+  const handleSelect = (id) => {
+    setActive(id);
+    setOpen(false); // close drawer on mobile after selecting
+  };
+
   return (
-    <div className="flex flex-col shrink-0 border-r border-white/5" style={{ width: '240px', background: 'rgba(15,8,4,0.95)', backdropFilter: 'blur(20px)' }}>
-      <div className="p-5 flex items-center gap-3 border-b border-white/5">
-        <div className="w-9 h-9 bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-xl flex items-center justify-center text-black font-black text-sm">R</div>
-        <div>
-          <div className="text-sm font-black gold-text">RUDRA TRADERS</div>
-          <div className="text-[10px] font-black tracking-widest uppercase bg-red-600 text-white px-2 py-0.5 rounded shadow-lg shadow-red-900/50 inline-block mt-0.5">ADMIN</div>
+    <>
+      {/* Overlay for mobile */}
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/70 md:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      {/* Sidebar panel */}
+      <div
+        className={`fixed top-0 left-0 h-full z-50 flex flex-col border-r border-white/5 transition-transform duration-300
+          md:static md:translate-x-0 md:shrink-0
+          ${ open ? 'translate-x-0' : '-translate-x-full md:translate-x-0' }`}
+        style={{ width: '240px', background: 'rgba(10,5,2,0.98)', backdropFilter: 'blur(20px)' }}
+      >
+        {/* Sidebar Header */}
+        <div className="p-5 flex items-center gap-3 border-b border-white/5">
+          <div className="w-9 h-9 bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-xl flex items-center justify-center text-black font-black text-sm">R</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-black gold-text truncate">RUDRA TRADERS</div>
+            <div className="text-[10px] font-black tracking-widest uppercase bg-red-600 text-white px-2 py-0.5 rounded shadow-lg shadow-red-900/50 inline-block mt-0.5">ADMIN</div>
+          </div>
+          {/* Close button on mobile */}
+          <button onClick={() => setOpen(false)} className="md:hidden text-gray-400 hover:text-white ml-auto">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Nav Items */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {items.map(item => (
+            <button
+              key={item.id}
+              onClick={() => handleSelect(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
+                active === item.id
+                  ? 'bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/20'
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <item.icon className="w-4 h-4 shrink-0" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Logout */}
+        <div className="p-3 border-t border-white/5">
+          <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-all">
+            <LogOut className="w-4 h-4 shrink-0" />
+            Logout
+          </button>
         </div>
       </div>
-      <nav className="flex-1 p-3 space-y-1">
-        {items.map(item => (
-          <button
-            key={item.id}
-            onClick={() => setActive(item.id)}
-            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 ${
-              active === item.id
-                ? 'bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/20'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <item.icon className="w-4 h-4" />
-            {item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="p-3 border-t border-white/5">
-        <button onClick={onLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition-all">
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
-      </div>
-    </div>
+    </>
   );
 };
 
@@ -131,23 +161,50 @@ const DashboardOverview = ({ machinery, loading }) => {
 
   return (
     <div>
-      <h2 className="text-2xl font-black text-white mb-8">Dashboard Overview</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 mb-10">
+      <h2 className="text-xl font-black text-white mb-5">Dashboard Overview</h2>
+      {/* Stats — 2 columns on mobile, 4 on desktop */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
         {stats.map((s, i) => (
-          <div key={i} className="glass-card p-6 rounded-2xl hover-float border border-white/5">
-            <div className={`w-11 h-11 ${s.bg} rounded-xl flex items-center justify-center mb-4`}>
-              <s.icon className={`w-5 h-5 ${s.color}`} />
+          <div key={i} className="glass-card p-4 rounded-2xl border border-white/5">
+            <div className={`w-9 h-9 ${s.bg} rounded-xl flex items-center justify-center mb-3`}>
+              <s.icon className={`w-4 h-4 ${s.color}`} />
             </div>
-            <div className={`text-3xl font-black mb-1 ${s.color}`}>{loading ? <span className="animate-pulse text-lg">...</span> : s.value}</div>
-            <div className="text-gray-400 text-sm">{s.label}</div>
+            <div className={`text-2xl font-black mb-0.5 ${s.color}`}>{loading ? <span className="animate-pulse text-base">...</span> : s.value}</div>
+            <div className="text-gray-400 text-xs">{s.label}</div>
           </div>
         ))}
       </div>
+
+      {/* Machinery summary — card list on mobile, table on desktop */}
       <div className="glass-card rounded-2xl overflow-hidden border border-white/5">
-        <div className="p-5 border-b border-white/5">
-          <h3 className="font-bold text-white">Machinery Summary</h3>
+        <div className="p-4 border-b border-white/5">
+          <h3 className="font-bold text-white text-sm">Machinery Summary</h3>
         </div>
-        <div className="overflow-x-auto">
+        {/* Mobile card list */}
+        <div className="md:hidden divide-y divide-white/5">
+          {loading
+            ? <div className="p-4 text-center text-gray-500 animate-pulse text-sm">Loading...</div>
+            : machinery.map(m => {
+              const qty = m.stockQuantity ?? 10;
+              return (
+                <div key={m.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-semibold text-sm truncate">{m.name}</div>
+                    <div className="text-gray-500 text-xs">{m.category}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-yellow-400 font-bold text-sm">₹{Number(m.price || 0).toLocaleString()}</div>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${qty > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                      {qty > 0 ? `Qty: ${qty}` : 'Out'}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          }
+        </div>
+        {/* Desktop table */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="data-table">
             <thead>
               <tr><th>Machine Name</th><th>Category</th><th>Price</th><th>Stock Qty</th><th>Status</th></tr>
@@ -367,41 +424,41 @@ const CatalogView = ({ machinery, refetch, loading }) => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-black text-white">Manage Catalog</h2>
-        <button onClick={() => setShowAdd(true)} className="btn-gold"><Plus className="w-4 h-4" /> Add Machine</button>
+      <div className="flex justify-between items-center mb-5 gap-3">
+        <h2 className="text-xl font-black text-white">Manage Catalog</h2>
+        <button onClick={() => setShowAdd(true)} className="btn-gold text-sm px-4 py-2 shrink-0"><Plus className="w-4 h-4" /> Add</button>
       </div>
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-          {[1,2,3,4,5,6].map(i => <div key={i} className="glass-card rounded-2xl h-72 animate-pulse border border-white/5" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {[1,2,3,4,5,6].map(i => <div key={i} className="glass-card rounded-2xl h-64 animate-pulse border border-white/5" />)}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {machinery.map(m => {
             const qty = m.stockQuantity ?? 10;
             return (
-              <div key={m.id} className="glass-card rounded-2xl overflow-hidden hover-float border border-white/5 flex flex-col">
-                {m.image && <img src={m.image} alt={m.name} className="w-full h-36 object-cover opacity-80" />}
-                {!m.image && <div className="w-full h-36 bg-black/40 flex items-center justify-center text-gray-600"><ImageIcon className="w-10 h-10" /></div>}
-                <div className="p-4 flex-1 flex flex-col">
-                  <div className="text-xs text-yellow-500/60 font-semibold uppercase mb-1">{m.category}</div>
+              <div key={m.id} className="glass-card rounded-2xl overflow-hidden border border-white/5 flex flex-col">
+                {m.image && <img src={m.image} alt={m.name} className="w-full h-32 object-cover opacity-80" />}
+                {!m.image && <div className="w-full h-32 bg-black/40 flex items-center justify-center text-gray-600"><ImageIcon className="w-8 h-8" /></div>}
+                <div className="p-3 flex-1 flex flex-col">
+                  <div className="text-xs text-yellow-500/60 font-semibold uppercase mb-0.5 truncate">{m.category}</div>
                   <h3 className="font-bold text-white mb-1 text-sm line-clamp-1">{m.name}</h3>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-yellow-400 font-black">₹{Number(m.price || 0).toLocaleString()}</span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-yellow-400 font-black text-sm">₹{Number(m.price || 0).toLocaleString()}</span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${qty > 0 ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                      {qty > 0 ? `In Stock (${qty})` : 'Out of Stock'}
+                      {qty > 0 ? `Stk:${qty}` : 'Out'}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-2">
                     <span className="text-xs text-gray-400">Qty:</span>
                     <button onClick={() => handleStockQty(m.id, Math.max(0, qty - 1))} disabled={togglingId === m.id}
-                      className="w-6 h-6 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-xs transition-all">−</button>
-                    <span className="text-white font-bold text-sm w-8 text-center">{qty}</span>
+                      className="w-7 h-7 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-sm transition-all">−</button>
+                    <span className="text-white font-bold text-sm w-6 text-center">{qty}</span>
                     <button onClick={() => handleStockQty(m.id, qty + 1)} disabled={togglingId === m.id}
-                      className="w-6 h-6 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-xs transition-all">+</button>
+                      className="w-7 h-7 rounded bg-white/10 hover:bg-yellow-500/20 text-white flex items-center justify-center text-sm transition-all">+</button>
                   </div>
                   <button onClick={() => handleDelete(m.id)}
-                    className="mt-auto flex items-center justify-center gap-2 w-full py-2 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
+                    className="mt-auto flex items-center justify-center gap-1.5 w-full py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors">
                     <Trash2 className="w-3 h-3" /> Delete
                   </button>
                 </div>
@@ -454,11 +511,12 @@ const AdminQuotation = () => {
 
   return (
     <div>
-      <h2 className="text-2xl font-black text-white mb-8">Generate Client Quotation</h2>
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        <div className="glass-card p-6 rounded-2xl border border-white/5">
-          <h3 className="font-bold text-white mb-5">Client Details</h3>
-          <div className="space-y-4">
+      <h2 className="text-xl font-black text-white mb-5">Generate Client Quotation</h2>
+      {/* Stack single-column on mobile, 2-col on xl */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <div className="glass-card p-4 rounded-2xl border border-white/5">
+          <h3 className="font-bold text-white mb-4">Client Details</h3>
+          <div className="space-y-3">
             {[
               { label: 'Client Name *', key: 'name', placeholder: 'Full name' },
               { label: 'S/O or Care Of', key: 'careOf', placeholder: 'Father / Guardian name' },
@@ -470,16 +528,16 @@ const AdminQuotation = () => {
               <div key={f.key}>
                 <label className="block text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">{f.label}</label>
                 {f.textarea
-                  ? <textarea className="input-dark resize-none" rows="2" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })}></textarea>
-                  : <input type="text" className="input-dark" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })} />
+                  ? <textarea className="input-dark resize-none text-sm" rows="2" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })}></textarea>
+                  : <input type="text" className="input-dark text-sm" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })} />
                 }
               </div>
             ))}
           </div>
         </div>
 
-        <div className="glass-card p-6 rounded-2xl border border-white/5">
-          <h3 className="font-bold text-white mb-5">Machinery Items</h3>
+        <div className="glass-card p-4 rounded-2xl border border-white/5">
+          <h3 className="font-bold text-white mb-4">Machinery Items</h3>
           <div className="space-y-3">
             {items.map((item, i) => (
               <div key={i} className="p-3 rounded-xl border border-white/5" style={{ background: 'rgba(255,255,255,0.02)' }}>
@@ -488,11 +546,9 @@ const AdminQuotation = () => {
                   {items.length > 1 && <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>}
                 </div>
                 <input type="text" className="input-dark text-sm mb-2" placeholder="Machine description" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <input type="number" className="input-dark text-sm" placeholder="Qty" min="1" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} />
-                  <div className="col-span-2">
-                    <input type="number" className="input-dark text-sm" placeholder="Rate (₹)" value={item.rate} onChange={e => updateItem(i, 'rate', e.target.value)} />
-                  </div>
+                  <input type="number" className="input-dark text-sm" placeholder="Rate (₹)" value={item.rate} onChange={e => updateItem(i, 'rate', e.target.value)} />
                 </div>
               </div>
             ))}
@@ -501,13 +557,13 @@ const AdminQuotation = () => {
             </button>
           </div>
 
-          <div className="mt-5 p-4 rounded-xl border border-yellow-500/20" style={{ background: 'rgba(212,175,55,0.05)' }}>
+          <div className="mt-4 p-3 rounded-xl border border-yellow-500/20" style={{ background: 'rgba(212,175,55,0.05)' }}>
             <div className="flex justify-between text-sm text-gray-400 mb-1"><span>Subtotal</span><span>₹{total.toLocaleString()}</span></div>
             <div className="flex justify-between text-sm text-gray-400 mb-2"><span>GST @18%</span><span>₹{(total * 0.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span></div>
-            <div className="flex justify-between font-black text-lg"><span className="text-white">Grand Total</span><span className="gold-text">₹{(total * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span></div>
+            <div className="flex justify-between font-black text-base"><span className="text-white">Grand Total</span><span className="gold-text">₹{(total * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span></div>
           </div>
 
-          <button onClick={handleGenerate} disabled={generating} className="btn-gold w-full justify-center mt-5 disabled:opacity-50">
+          <button onClick={handleGenerate} disabled={generating} className="btn-gold w-full justify-center mt-4 disabled:opacity-50">
             {generating ? 'Generating...' : <><Download className="w-4 h-4" /> Generate & Download PDF</>}
           </button>
           {generated && (
@@ -578,82 +634,74 @@ const ClientRequests = () => {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
-        <h2 className="text-2xl font-black text-white">Client Quotation Requests</h2>
-        <button onClick={fetchQuotes} className="btn-outline-gold text-sm px-4 py-2">Refresh</button>
+      <div className="flex justify-between items-center mb-5 gap-3">
+        <h2 className="text-xl font-black text-white">Client Quotation Requests</h2>
+        <button onClick={fetchQuotes} className="btn-outline-gold text-xs px-3 py-2 shrink-0">Refresh</button>
       </div>
 
       {loading ? (
-        <div className="space-y-4">
-          {[1,2,3].map(i => <div key={i} className="glass-card h-24 rounded-2xl animate-pulse border border-white/5" />)}
+        <div className="space-y-3">
+          {[1,2,3].map(i => <div key={i} className="glass-card h-20 rounded-2xl animate-pulse border border-white/5" />)}
         </div>
       ) : quotes.length === 0 ? (
-        <div className="glass-card p-12 text-center rounded-3xl border border-white/5">
-          <FileText className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-white mb-2">No Requests Yet</h3>
-          <p className="text-gray-400">Client quotation requests will appear here.</p>
+        <div className="glass-card p-10 text-center rounded-3xl border border-white/5">
+          <FileText className="w-10 h-10 text-gray-600 mx-auto mb-3" />
+          <h3 className="text-base font-bold text-white mb-1">No Requests Yet</h3>
+          <p className="text-gray-400 text-sm">Client quotation requests will appear here.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {quotes.map(q => (
-            <div key={q.id} className="glass-card p-5 rounded-2xl hover-float border border-white/5">
-              <div className="flex flex-col md:flex-row gap-4 justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <h3 className="font-bold text-white">{q.clientDetails?.name || 'Unknown'}</h3>
-                    <span className="text-xs text-gray-500 bg-black/30 px-2 py-0.5 rounded-md">Ref: {q.refNo}</span>
-                    {q.source === 'admin' && <span className="text-xs text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-md">Admin Generated</span>}
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm text-gray-400 mb-3">
-                    <p><span className="text-gray-500">Phone: </span>{q.clientDetails?.phone || '—'}</p>
-                    <p><span className="text-gray-500">Project: </span>{q.clientDetails?.projectType || '—'}</p>
-                    <p className="sm:col-span-2"><span className="text-gray-500">Address: </span>{q.clientDetails?.address || '—'}</p>
-                  </div>
-                  
-                  {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
-                    <div className="bg-green-500/10 border border-green-500/20 p-3 rounded-xl inline-block w-full sm:w-auto">
-                      <div className="flex items-center gap-2 text-green-400 font-bold text-sm mb-1">
-                        <CheckCircle2 className="w-4 h-4" /> {q.paymentStatus === 'Full Payment Received' ? 'Full Payment Received' : 'Advance Received'} (₹{(q.advanceAmount || 0).toLocaleString()})
-                      </div>
-                      {q.paymentStatus === 'Advance Received' && (
-                        <div className="text-xs text-gray-400">
-                          Remaining Balance: <span className="text-white font-bold">₹{((q.total || 0) - (q.advanceAmount || 0)).toLocaleString()}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {q.items && q.items.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {q.items.map((item, i) => (
-                        <span key={i} className="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded-full">{item.description} ×{item.quantity}</span>
-                      ))}
-                    </div>
-                  )}
+            <div key={q.id} className="glass-card p-4 rounded-2xl border border-white/5">
+              {/* Client name + ref */}
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div>
+                  <h3 className="font-bold text-white text-sm">{q.clientDetails?.name || 'Unknown'}</h3>
+                  <span className="text-xs text-gray-500">Ref: {q.refNo} · {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</span>
                 </div>
-                <div className="flex flex-col justify-between items-end gap-3 shrink-0">
-                  <div className="text-right">
-                    <div className="text-xs text-gray-500">Total Value</div>
-                    <div className="text-xl font-black gold-text">₹{Number(q.total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
-                      <button onClick={() => handleDownloadReceipt(q)} className="flex items-center gap-1.5 px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/30 transition-colors text-xs">
-                        <Download className="w-3 h-3" /> Receipt
-                      </button>
-                    )}
-                    <button onClick={() => handleDownload(q)} className="flex items-center gap-1.5 px-3 py-1.5 btn-gold text-xs">
-                      <Download className="w-3 h-3" /> PDF
-                    </button>
-                    <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50">
-                      <Trash2 className="w-3 h-3" /> Delete
-                    </button>
-                  </div>
+                <div className="text-right shrink-0">
+                  <div className="text-base font-black gold-text">₹{Number(q.total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
+                  {q.source === 'admin' && <span className="text-xs text-purple-400">Admin</span>}
                 </div>
+              </div>
+
+              {/* Details */}
+              <div className="text-xs text-gray-400 space-y-0.5 mb-2">
+                {q.clientDetails?.phone && <p>📞 {q.clientDetails.phone}</p>}
+                {q.clientDetails?.address && <p>📍 {q.clientDetails.address}</p>}
+              </div>
+
+              {/* Items */}
+              {q.items && q.items.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-3">
+                  {q.items.map((item, i) => (
+                    <span key={i} className="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded-full">{item.description} ×{item.quantity}</span>
+                  ))}
+                </div>
+              )}
+
+              {/* Payment status */}
+              {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
+                <div className="flex items-center gap-2 text-green-400 font-bold text-xs mb-2 bg-green-500/10 border border-green-500/20 p-2 rounded-lg">
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                  {q.paymentStatus === 'Full Payment Received' ? 'Full Payment' : 'Advance'} ₹{(q.advanceAmount || 0).toLocaleString()}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-2 flex-wrap">
+                {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received') && (
+                  <button onClick={() => handleDownloadReceipt(q)} className="flex items-center gap-1 px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg text-xs">
+                    <Download className="w-3 h-3" /> Receipt
+                  </button>
+                )}
+                <button onClick={() => handleDownload(q)} className="flex items-center gap-1 px-3 py-1.5 btn-gold text-xs">
+                  <Download className="w-3 h-3" /> PDF
+                </button>
+                <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 disabled:opacity-50">
+                  <Trash2 className="w-3 h-3" /> Delete
+                </button>
               </div>
             </div>
           ))}
@@ -670,6 +718,7 @@ const AdminPage = () => {
   const [user, setUser] = useState(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [active, setActive] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { machinery, loading: machineryLoading, refetch } = useMachinery();
 
@@ -684,8 +733,15 @@ const AdminPage = () => {
     navigate('/');
   };
 
+  const activeLabels = {
+    dashboard: 'Dashboard',
+    catalog: 'Machinery Catalog',
+    quotation: 'Generate Quotation',
+    requests: 'Client Requests',
+  };
+
   if (loadingUser) return (
-    <div className="min-h-screen hero-gradient flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0a0f' }}>
       <div className="text-yellow-400 text-xl font-bold animate-pulse">Loading...</div>
     </div>
   );
@@ -701,9 +757,44 @@ const AdminPage = () => {
 
   return (
     <div className="min-h-screen flex" style={{ background: '#0a0a0f' }}>
-      <Sidebar active={active} setActive={setActive} onLogout={handleLogout} />
-      <div className="flex-1 p-6 overflow-y-auto" style={{ maxHeight: '100vh' }}>
-        {views[active]}
+      {/* Sidebar (drawer on mobile, inline on desktop) */}
+      <Sidebar
+        active={active}
+        setActive={setActive}
+        onLogout={handleLogout}
+        open={sidebarOpen}
+        setOpen={setSidebarOpen}
+      />
+
+      {/* Main area */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+
+        {/* Mobile top header */}
+        <div
+          className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-white/5 sticky top-0 z-30"
+          style={{ background: 'rgba(10,5,2,0.98)', backdropFilter: 'blur(16px)' }}
+        >
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="text-gray-300 hover:text-white p-1"
+          >
+            {/* Hamburger icon */}
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-gradient-to-br from-yellow-600 to-yellow-800 rounded-lg flex items-center justify-center text-black font-black text-xs">R</div>
+            <span className="text-sm font-black gold-text">RUDRA TRADERS</span>
+            <span className="text-[9px] font-black tracking-widest uppercase bg-red-600 text-white px-1.5 py-0.5 rounded">ADMIN</span>
+          </div>
+          <span className="ml-auto text-xs text-gray-500 truncate">{activeLabels[active]}</span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 p-4 md:p-6 overflow-y-auto">
+          {views[active]}
+        </div>
       </div>
     </div>
   );

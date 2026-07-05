@@ -26,7 +26,7 @@ const AppShell = () => {
     <>
       <ScrollTop />
       {!isAdmin && <Navbar />}
-      <main style={{ paddingTop: isAdmin ? '0px' : '90px' }}>
+      <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
