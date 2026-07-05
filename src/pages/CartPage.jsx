@@ -620,7 +620,7 @@ const CartPage = () => {
                     </button>
                   </div>
                   <button onClick={handleSkipQuotation} className="btn-outline-gold w-full justify-center text-sm md:text-base border-gray-600 text-gray-300 hover:border-yellow-500 hover:text-yellow-400 hover:bg-yellow-500/10 transition-all">
-                    Pay Full / Advance (Skip Quotation)
+                    Pay Full / Advance Payment (Skip Quotation)
                   </button>
                 </div>
               </>
