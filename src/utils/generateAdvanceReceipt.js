@@ -198,14 +198,16 @@ export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId, total
   doc.setTextColor(212, 175, 55);
   doc.text('Thank you for your business! | rudratraders.store@gmail.com | +91 7982813507', pageW / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
 
-  // Save
+  // Save / Show
   const safeName = (clientDetails.name || 'Client').replace(/\s+/g, '_');
   const filename = `Rudra_Traders_Payment_Receipt_${safeName}.pdf`;
   
   if (window.AndroidApp) {
+    // Mobile App: show inline in-app PDF viewer
     const base64 = doc.output('datauristring').split(',')[1];
-    window.AndroidApp.downloadBase64Pdf(base64, filename);
+    window.AndroidApp.showPdf(base64, filename);
   } else {
+    // Normal Web Browser: trigger download
     doc.save(filename);
   }
 };
