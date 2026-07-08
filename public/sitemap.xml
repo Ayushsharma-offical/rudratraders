@@ -4,12 +4,12 @@
 
   <!-- Homepage – Highest Priority -->
   <url>
-    <loc>https://rudratraders.in/</loc>
+    <loc>https://rudratrades.in/</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://rudratraders.in/hero-image.png</image:loc>
+      <image:loc>https://rudratrades.in/hero-image.png</image:loc>
       <image:title>Rudra Traders – India's #1 MSME Machinery Supplier</image:title>
       <image:caption>Rudra Traders MSME Machinery – poultry feed machines, flour mills, oil expellers and more. Designed by Ayush Sharma.</image:caption>
     </image:image>
@@ -17,12 +17,12 @@
 
   <!-- Products / Machinery Catalog – Very High Priority -->
   <url>
-    <loc>https://rudratraders.in/products</loc>
+    <loc>https://rudratrades.in/products</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.95</priority>
     <image:image>
-      <image:loc>https://rudratraders.in/hero-image.png</image:loc>
+      <image:loc>https://rudratrades.in/hero-image.png</image:loc>
       <image:title>200+ MSME Machines – Rudra Traders Product Catalog</image:title>
       <image:caption>Browse poultry feed machines, flour mills, oil expellers, dal mills, spice grinders and more at Rudra Traders</image:caption>
     </image:image>
@@ -30,7 +30,7 @@
 
   <!-- Cart / Quotation Page -->
   <url>
-    <loc>https://rudratraders.in/cart</loc>
+    <loc>https://rudratrades.in/cart</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.85</priority>
@@ -38,7 +38,7 @@
 
   <!-- About Page -->
   <url>
-    <loc>https://rudratraders.in/about</loc>
+    <loc>https://rudratrades.in/about</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>
@@ -46,7 +46,7 @@
 
   <!-- Contact Page -->
   <url>
-    <loc>https://rudratraders.in/contact</loc>
+    <loc>https://rudratrades.in/contact</loc>
     <lastmod>2026-07-08</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.80</priority>

@@ -7,5 +7,5 @@ Disallow: /api/
 Crawl-delay: 1
 
 # Sitemaps
-Sitemap: https://rudratraders.in/sitemap.xml
+Sitemap: https://rudratrades.in/sitemap.xml
 Sitemap: https://rudratraders.vercel.app/sitemap.xml
