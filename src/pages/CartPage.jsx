@@ -14,13 +14,14 @@ let refCounter = parseInt(localStorage.getItem('rudra_ref') || '65');
 const CartPage = () => {
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
-  const [step, setStep] = useState(1); // 1=Cart, 2=Details, 3=Done
+  const [step, setStep] = useState(() => parseInt(localStorage.getItem('cart_step') || '1')); // 1=Cart, 2=Details, 3=Done
   const [paying, setPaying] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [client, setClient] = useState({
-    name: '', careOf: '', address: '', pincode: '', phone: '', projectType: ''
+  const [paymentSuccess, setPaymentSuccess] = useState(() => localStorage.getItem('cart_payment_success') === 'true');
+  const [client, setClient] = useState(() => {
+    const saved = localStorage.getItem('cart_client');
+    return saved ? JSON.parse(saved) : { name: '', careOf: '', address: '', pincode: '', phone: '', projectType: '' };
   });
-  const [quoteId, setQuoteId] = useState(null);
+  const [quoteId, setQuoteId] = useState(() => localStorage.getItem('cart_quote_id') || null);
   const [errors, setErrors] = useState({});
   const [user, setUser] = useState(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -47,6 +48,21 @@ const CartPage = () => {
       unsub();
     };
   }, []);
+
+  // Persist state to localStorage to survive Android background app kills
+  useEffect(() => {
+    localStorage.setItem('cart_step', step.toString());
+  }, [step]);
+  useEffect(() => {
+    localStorage.setItem('cart_payment_success', paymentSuccess.toString());
+  }, [paymentSuccess]);
+  useEffect(() => {
+    localStorage.setItem('cart_client', JSON.stringify(client));
+  }, [client]);
+  useEffect(() => {
+    if (quoteId) localStorage.setItem('cart_quote_id', quoteId);
+    else localStorage.removeItem('cart_quote_id');
+  }, [quoteId]);
 
   const handleRemove = (id) => { removeFromCart(id); setCart(getCart()); };
   const handleQty = (id, qty) => { updateQty(id, qty); setCart(getCart()); };
@@ -178,6 +194,7 @@ const CartPage = () => {
               }
 
               setShowTerms(false);
+              setPaymentSuccess(true);
               setStep(3);
             } else {
               alert('Payment Verification Failed!');
@@ -407,7 +424,19 @@ const CartPage = () => {
         )}
 
         <div className="space-y-3">
-          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); setPaymentSuccess(false); setPdfDownloaded(false); }} className="btn-outline-gold w-full justify-center">
+          <button onClick={() => { 
+            clearCart(); 
+            setCart([]); 
+            setStep(1); 
+            setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); 
+            setPaymentSuccess(false); 
+            setQuoteId(null);
+            setPdfDownloaded(false); 
+            localStorage.removeItem('cart_step');
+            localStorage.removeItem('cart_client');
+            localStorage.removeItem('cart_payment_success');
+            localStorage.removeItem('cart_quote_id');
+          }} className="btn-outline-gold w-full justify-center">
             Start New Quote
           </button>
           <button onClick={() => navigate('/products')} className="btn-outline-gold w-full justify-center" style={{ background: 'transparent' }}>
