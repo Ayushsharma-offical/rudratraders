@@ -19,8 +19,8 @@ module.exports = async function handler(req, res) {
     return res.status(400).json({ error: 'Missing order_id' });
   }
 
-  const keyId = process.env.RAZORPAY_KEY_ID;
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
+  const keyId = process.env.RAZORPAY_KEY_ID ? process.env.RAZORPAY_KEY_ID.trim() : null;
+  const keySecret = process.env.RAZORPAY_KEY_SECRET ? process.env.RAZORPAY_KEY_SECRET.trim() : null;
 
   if (!keyId || !keySecret) {
     return res.status(500).json({ error: 'Razorpay keys not configured' });
