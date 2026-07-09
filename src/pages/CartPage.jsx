@@ -14,14 +14,13 @@ let refCounter = parseInt(localStorage.getItem('rudra_ref') || '65');
 const CartPage = () => {
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
-  const [step, setStep] = useState(() => parseInt(localStorage.getItem('cart_step') || '1')); // 1=Cart, 2=Details, 3=Done
+  const [step, setStep] = useState(1); // 1=Cart, 2=Details, 3=Done
   const [paying, setPaying] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(() => localStorage.getItem('cart_payment_success') === 'true');
-  const [client, setClient] = useState(() => {
-    const saved = localStorage.getItem('cart_client');
-    return saved ? JSON.parse(saved) : { name: '', careOf: '', address: '', pincode: '', phone: '', projectType: '' };
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [client, setClient] = useState({
+    name: '', careOf: '', address: '', pincode: '', phone: '', projectType: ''
   });
-  const [quoteId, setQuoteId] = useState(() => localStorage.getItem('cart_quote_id') || null);
+  const [quoteId, setQuoteId] = useState(null);
   const [errors, setErrors] = useState({});
   const [user, setUser] = useState(null);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
@@ -48,53 +47,6 @@ const CartPage = () => {
       unsub();
     };
   }, []);
-
-  // Persist state to localStorage to survive Android background app kills
-  useEffect(() => {
-    localStorage.setItem('cart_step', step.toString());
-  }, [step]);
-  useEffect(() => {
-    localStorage.setItem('cart_payment_success', paymentSuccess.toString());
-  }, [paymentSuccess]);
-  useEffect(() => {
-    localStorage.setItem('cart_client', JSON.stringify(client));
-  }, [client]);
-  useEffect(() => {
-    if (quoteId) localStorage.setItem('cart_quote_id', quoteId);
-    else localStorage.removeItem('cart_quote_id');
-  }, [quoteId]);
-
-  // Auto-resume logic if Android killed the app during payment
-  useEffect(() => {
-    const checkPaymentStatus = async () => {
-      const savedOrderId = localStorage.getItem('cart_order_id');
-      if (step === 2 && savedOrderId && !paymentSuccess) {
-        try {
-          const res = await fetch(`/api/check-order-status?order_id=${savedOrderId}`);
-          const order = await res.json();
-          if (order && order.status === 'paid') {
-            // Payment was successful while app was in background!
-            setPaymentSuccess(true);
-            setStep(3);
-            localStorage.removeItem('cart_order_id'); // cleanup
-            
-            // Update the existing quote in Firebase to mark it paid
-            const savedQuoteId = localStorage.getItem('cart_quote_id');
-            if (savedQuoteId) {
-              update(ref(rtdb, `quotes/${savedQuoteId}`), {
-                paymentStatus: 'Quotation Generated',
-                quotationFeePaid: true
-              });
-            }
-          }
-        } catch (e) {
-          console.error("Auto-resume failed:", e);
-        }
-      }
-    };
-    
-    checkPaymentStatus();
-  }, [step, paymentSuccess]);
 
   const handleRemove = (id) => { removeFromCart(id); setCart(getCart()); };
   const handleQty = (id, qty) => { updateQty(id, qty); setCart(getCart()); };
@@ -172,43 +124,6 @@ const CartPage = () => {
       const order = await res.json();
       if (!order || order.error) throw new Error(order.error || 'Failed to create order');
 
-      // Save order_id to localStorage for auto-resume
-      localStorage.setItem('cart_order_id', order.id);
-
-      // 1.5 Save Quote to Firebase as 'Pending' BEFORE opening Razorpay
-      const items = cart.map(i => ({
-        description: String(i.name || 'Machinery Item'),
-        quantity: Number(i.quantity) || 1,
-        rate: Number(i.price) || 0
-      }));
-      const safeClient = {
-        name: client.name || 'Client',
-        careOf: client.careOf || '',
-        address: client.address || '',
-        pincode: client.pincode || '',
-        phone: client.phone || '',
-        projectType: client.projectType || 'Machinery Unit',
-      };
-
-      try {
-        const newQuoteRef = await push(ref(rtdb, 'quotes'), {
-          userId: user ? user.uid : 'guest',
-          clientDetails: safeClient,
-          items: items,
-          refNo: refCounter.toString(),
-          subtotal,
-          gst,
-          total,
-          quotationFeePaid: false, // will update to true on success
-          paymentStatus: 'Pending',
-          createdAt: new Date().toISOString()
-        });
-        setQuoteId(newQuoteRef.key);
-        localStorage.setItem('cart_quote_id', newQuoteRef.key);
-      } catch (err) {
-        console.error('Error saving quote:', err);
-      }
-
       const options = {
         key: 'rzp_live_T6bASddyHt5W3K',
         amount: order.amount,
@@ -216,29 +131,54 @@ const CartPage = () => {
         name: "Rudra Traders",
         description: `Quotation Fee for Quote #${refCounter}`,
         order_id: order.order_id,
-        handler: async function (response) {
+        handler: async (response) => {
           try {
             const verifyRes = await fetch('/api/verify-payment', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(response)
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
             });
             const result = await verifyRes.json();
             
             if (result.success) {
-              // Update Firebase quote to paid
-              const savedQuoteId = localStorage.getItem('cart_quote_id');
-              if (savedQuoteId) {
-                await update(ref(rtdb, `quotes/${savedQuoteId}`), {
+              const items = cart.map(i => ({
+                description: String(i.name || 'Machinery Item'),
+                quantity: Number(i.quantity) || 1,
+                rate: Number(i.price) || 0
+              }));
+              const safeClient = {
+                name: client.name || 'Client',
+                careOf: client.careOf || '',
+                address: client.address || '',
+                pincode: client.pincode || '',
+                phone: client.phone || '',
+                projectType: client.projectType || 'Machinery Unit',
+              };
+
+              try {
+                const newQuoteRef = await push(ref(rtdb, 'quotes'), {
+                  userId: user ? user.uid : 'guest',
+                  clientDetails: safeClient,
+                  items: items,
+                  refNo: refCounter.toString(),
+                  subtotal,
+                  gst,
+                  total,
+                  quotationFeePaid: true,
                   paymentStatus: 'Quotation Generated',
-                  quotationFeePaid: true
+                  createdAt: new Date().toISOString()
                 });
+                setQuoteId(newQuoteRef.key);
+              } catch (err) {
+                console.error('Error saving quote:', err);
               }
 
               setShowTerms(false);
-              setPaymentSuccess(true);
               setStep(3);
-              localStorage.removeItem('cart_order_id');
             } else {
               alert('Payment Verification Failed!');
             }
@@ -467,20 +407,7 @@ const CartPage = () => {
         )}
 
         <div className="space-y-3">
-          <button onClick={() => { 
-            clearCart(); 
-            setCart([]); 
-            setStep(1); 
-            setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); 
-            setPaymentSuccess(false); 
-            setQuoteId(null);
-            setPdfDownloaded(false); 
-            localStorage.removeItem('cart_step');
-            localStorage.removeItem('cart_client');
-            localStorage.removeItem('cart_payment_success');
-            localStorage.removeItem('cart_quote_id');
-            localStorage.removeItem('cart_order_id');
-          }} className="btn-outline-gold w-full justify-center">
+          <button onClick={() => { clearCart(); setCart([]); setStep(1); setClient({ name: user?.displayName || '',careOf:'',address:'',pincode:'',phone:'',projectType:'' }); setPaymentSuccess(false); setPdfDownloaded(false); }} className="btn-outline-gold w-full justify-center">
             Start New Quote
           </button>
           <button onClick={() => navigate('/products')} className="btn-outline-gold w-full justify-center" style={{ background: 'transparent' }}>

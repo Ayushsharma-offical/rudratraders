@@ -124,13 +124,6 @@ export const MACHINERY = [
 
 export const CATEGORIES = ['All', 'Feed Processing', 'Mixing Equipment', 'Grinding Equipment', 'Oil Processing', 'Flour Milling', 'Spice Processing', 'Bakery Equipment', 'Dal Processing'];
 
-const clearCheckoutState = () => {
-  localStorage.removeItem('cart_step');
-  localStorage.removeItem('cart_payment_success');
-  localStorage.removeItem('cart_quote_id');
-  localStorage.removeItem('cart_order_id');
-};
-
 export const addToCart = (product, quantity = 1) => {
   const cart = JSON.parse(localStorage.getItem('rudra_cart') || '[]');
   const existing = cart.find(i => i.id === product.id);
@@ -140,7 +133,6 @@ export const addToCart = (product, quantity = 1) => {
     cart.push({ ...product, quantity });
   }
   localStorage.setItem('rudra_cart', JSON.stringify(cart));
-  clearCheckoutState();
   window.dispatchEvent(new Event('cart_updated'));
 };
 
@@ -149,19 +141,16 @@ export const getCart = () => JSON.parse(localStorage.getItem('rudra_cart') || '[
 export const removeFromCart = (id) => {
   const cart = getCart().filter(i => i.id !== id);
   localStorage.setItem('rudra_cart', JSON.stringify(cart));
-  clearCheckoutState();
   window.dispatchEvent(new Event('cart_updated'));
 };
 
 export const updateQty = (id, qty) => {
   const cart = getCart().map(i => i.id === id ? { ...i, quantity: qty } : i).filter(i => i.quantity > 0);
   localStorage.setItem('rudra_cart', JSON.stringify(cart));
-  clearCheckoutState();
   window.dispatchEvent(new Event('cart_updated'));
 };
 
 export const clearCart = () => {
   localStorage.removeItem('rudra_cart');
-  clearCheckoutState();
   window.dispatchEvent(new Event('cart_updated'));
 };
