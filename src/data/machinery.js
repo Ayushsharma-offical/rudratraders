@@ -118,7 +118,7 @@ export const MACHINERY = [
     features: ["15 HP Motor", "Adjustable Splitter", "Polishing Drum", "Self-Priming", "Compact Design"],
     image: "https://images.unsplash.com/photo-1503596476-1c12a8ba09a9?auto=format&fit=crop&q=80&w=600",
     tag: "Heavy Duty",
-    inStock: false,
+    inStock: true,
   },
 ];
 
