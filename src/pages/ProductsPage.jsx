@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Star, ShoppingCart, SlidersHorizontal, X, ShieldCheck } from 'lucide-react';
 import { CATEGORIES, addToCart } from '../data/machinery';
@@ -14,6 +14,34 @@ const Toast = ({ msg, onClose }) => (
   </div>
 );
 
+const TiltCard = ({ children, onClick }) => {
+  const cardRef = useRef(null);
+  const handleMove = (e) => {
+    const el = cardRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    const rotY = (x - 0.5) * 18;
+    const rotX = (0.5 - y) * 14;
+    el.style.transform = `perspective(700px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(8px) scale(1.025)`;
+    el.style.boxShadow = `${-rotY * 1.5}px ${rotX * 1.5}px 40px -10px rgba(245,171,61,0.25), 0 20px 60px -20px rgba(0,0,0,0.7)`;
+  };
+  const handleLeave = () => {
+    const el = cardRef.current;
+    if (!el) return;
+    el.style.transform = 'perspective(700px) rotateX(0deg) rotateY(0deg) translateZ(0px) scale(1)';
+    el.style.boxShadow = '';
+  };
+  return (
+    <div ref={cardRef} onClick={onClick} onMouseMove={handleMove} onMouseLeave={handleLeave}
+      style={{ transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out', willChange: 'transform', transformStyle: 'preserve-3d', cursor: 'pointer' }}
+    >
+      {children}
+    </div>
+  );
+};
+
 const ProductsPage = () => {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -24,7 +52,7 @@ const ProductsPage = () => {
 
   const handleAddCart = (product, e) => {
     e.stopPropagation();
-    if (product.stockQuantity === 0) return;
+    if (product.inStock === false) return;
     addToCart(product);
     setToast(`${product.name} added to quote!`);
     setTimeout(() => setToast(''), 3000);
@@ -115,61 +143,63 @@ const ProductsPage = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filtered.map(product => (
-            <div key={product.id} className="glass-card rounded-2xl overflow-hidden group cursor-pointer hover-float border border-white/10 hover:border-white/30 transition-all" onClick={() => navigate(`/products/${product.id}`)}>
-              {/* Image */}
-              <div className="relative h-52 overflow-hidden">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-75 group-hover:opacity-95"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
-                {product.tag && (
-                  <span className="absolute top-3 left-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-md">{product.tag}</span>
-                )}
-                {product.stockQuantity === 0 && (
-                  <span className="absolute top-3 right-3 bg-red-600/90 text-white text-xs font-bold px-2 py-1 rounded-md">Out of Stock</span>
-                )}
-                {/* Hover Overlay */}
-                <div className="absolute inset-0 bg-yellow-500/0 group-hover:bg-yellow-500/5 transition-all duration-300 flex items-center justify-center">
-                  <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full transition-all">View Details</span>
-                </div>
-              </div>
-
-              {/* Info */}
-              <div className="p-5">
-                <div className="text-xs text-yellow-500/70 font-semibold uppercase tracking-wide mb-1">{product.category}</div>
-                <h3 className="font-bold text-white text-sm mb-1 line-clamp-2 leading-snug">{product.name}</h3>
-                <p className="text-xs text-gray-500 mb-3 flex items-center gap-1">
-                  <SlidersHorizontal className="w-3 h-3" /> {product.capacity}
-                </p>
-                <div className="flex items-center gap-1 mb-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} />
-                  ))}
-                  <span className="text-xs text-gray-500 ml-1">({product.reviews})</span>
-                </div>
-
-                <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-white/10">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="text-xl font-bold text-white">₹{product.price.toLocaleString()}</div>
-                      <div className="text-xs text-gray-500 line-through">₹{product.originalPrice.toLocaleString()}</div>
-                    </div>
-                    <div className="text-xs text-green-400 font-medium bg-green-400/10 px-2 py-1 rounded-md">
-                      Save ₹{(product.originalPrice - product.price).toLocaleString()}
-                    </div>
+            <TiltCard key={product.id} onClick={() => navigate(`/products/${product.id}`)}>
+              <div className="glass-card rounded-2xl overflow-hidden group border border-white/10 hover:border-yellow-500/30 transition-colors">
+                {/* Image */}
+                <div className="relative h-52 overflow-hidden">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-75 group-hover:opacity-95"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent"></div>
+                  {product.tag && (
+                    <span className="absolute top-3 left-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-md">{product.tag}</span>
+                  )}
+                  {product.inStock === false && (
+                    <span className="absolute top-3 right-3 bg-red-600/90 text-white text-xs font-bold px-2 py-1 rounded-md">Out of Stock</span>
+                  )}
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-yellow-500/0 group-hover:bg-yellow-500/5 transition-all duration-300 flex items-center justify-center">
+                    <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full transition-all">View Details</span>
                   </div>
-                  <button
-                    onClick={e => handleAddCart(product, e)}
-                    disabled={product.stockQuantity === 0}
-                    className="btn-coral w-full justify-center text-sm disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ShoppingCart className="w-4 h-4" /> Add to Quote
-                  </button>
+                </div>
+
+                {/* Info */}
+                <div className="p-5">
+                  <div className="text-xs text-yellow-500/70 font-semibold uppercase tracking-wide mb-1">{product.category}</div>
+                  <h3 className="font-bold text-white text-sm mb-1 line-clamp-2 leading-snug">{product.name}</h3>
+                  <p className="text-xs text-gray-500 mb-3 flex items-center gap-1">
+                    <SlidersHorizontal className="w-3 h-3" /> {product.capacity}
+                  </p>
+                  <div className="flex items-center gap-1 mb-4">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-3 h-3 ${i < Math.floor(product.rating) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-600'}`} />
+                    ))}
+                    <span className="text-xs text-gray-500 ml-1">({product.reviews})</span>
+                  </div>
+
+                  <div className="flex flex-col gap-3 mt-4 pt-4 border-t border-white/10">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="text-xl font-bold text-white">₹{product.price.toLocaleString()}</div>
+                        <div className="text-xs text-gray-500 line-through">₹{product.originalPrice.toLocaleString()}</div>
+                      </div>
+                      <div className="text-xs text-green-400 font-medium bg-green-400/10 px-2 py-1 rounded-md">
+                        Save ₹{(product.originalPrice - product.price).toLocaleString()}
+                      </div>
+                    </div>
+                    <button
+                      onClick={e => handleAddCart(product, e)}
+                      disabled={product.inStock === false}
+                      className="btn-coral w-full justify-center text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <ShoppingCart className="w-4 h-4" /> Add to Quote
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
+            </TiltCard>
           ))}
         </div>
       )}
