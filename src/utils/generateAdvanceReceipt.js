@@ -9,46 +9,45 @@ const fmt = (n) => {
   return rest ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3 : last3;
 };
 
-// ─── Stamp SVG → base64 PNG via canvas ─────────────────────────────────────
-const getStampBase64 = () => new Promise((resolve) => {
-  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-    <defs>
-      <path id="topArc" d="M 20,100 A 80,80 0 0,1 180,100"/>
-      <path id="botArc" d="M 30,115 A 75,75 0 0,0 170,115"/>
-    </defs>
-    <circle cx="100" cy="100" r="92" fill="none" stroke="#6b21a8" stroke-width="4"/>
-    <circle cx="100" cy="100" r="84" fill="none" stroke="#6b21a8" stroke-width="1.5"/>
-    <text x="18" y="108" fill="#6b21a8" font-size="16" font-family="serif">&#9733;</text>
-    <text x="164" y="108" fill="#6b21a8" font-size="16" font-family="serif">&#9733;</text>
-    <text fill="#6b21a8" font-size="15" font-family="Arial" font-weight="bold" letter-spacing="3">
-      <textPath href="#topArc" startOffset="8%">RUDRA TRADERS</textPath>
-    </text>
-    <circle cx="100" cy="100" r="52" fill="none" stroke="#6b21a8" stroke-width="1.2"/>
-    <text x="100" y="97" fill="#6b21a8" font-size="13" font-family="Arial" font-weight="bold" text-anchor="middle">New Delhi</text>
-    <path d="M72,112 Q85,104 100,112 Q115,120 128,112" fill="none" stroke="#6b21a8" stroke-width="1.5" stroke-linecap="round"/>
-    <text fill="#6b21a8" font-size="13" font-family="Arial" font-weight="bold" letter-spacing="2">
-      <textPath href="#botArc" startOffset="12%">Uttam Nagar</textPath>
-    </text>
-  </svg>`;
-
-  const img = new Image();
-  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(svgBlob);
-  img.onload = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = 200; canvas.height = 200;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(img, 0, 0);
-    URL.revokeObjectURL(url);
-    resolve(canvas.toDataURL('image/png'));
-  };
-  img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
-  img.src = url;
-});
+// ─── Load Stamp & Remove White Background ─────────────────────────────────────
+const loadTransparentStamp = async () => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      
+      try {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i], g = data[i+1], b = data[i+2];
+          // Replace light pixels with transparent
+          if (r > 230 && g > 230 && b > 230) {
+            data[i+3] = 0;
+          } else if (r > 200 && g > 200 && b > 200) {
+            data[i+3] = 100; // semi-transparent for smoothing edges
+          }
+        }
+        ctx.putImageData(imageData, 0, 0);
+        resolve(canvas.toDataURL('image/png'));
+      } catch (e) {
+        // Fallback if canvas taint issues occur (shouldn't happen with local file)
+        resolve(canvas.toDataURL('image/png'));
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = '/stamp.png';
+  });
+};
 
 // ─── MAIN ADVANCE RECEIPT GENERATOR ─────────────────────────────────────────
 export const generateAdvanceReceipt = async (clientDetails, amountPaid, orderId, totalAmount = amountPaid) => {
-  const stampBase64 = await getStampBase64();
+  const stampBase64 = await loadTransparentStamp();
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
@@ -82,7 +81,7 @@ export const generateAdvanceReceipt = async (clientDetails, amountPaid, orderId,
   doc.setTextColor(200, 200, 210);
   doc.text('255-A, Vipin Garden, Uttam Nagar', rX, 14, { align: 'right' });
   doc.text('New Delhi – 110059, India', rX, 20, { align: 'right' });
-  doc.text('+91 7982813507 | +91 8130957597', rX, 26, { align: 'right' });
+  doc.text('+91 7982813507', rX, 26, { align: 'right' });
   doc.text('rudratraders.store@gmail.com', rX, 32, { align: 'right' });
 
   // ── GOLD TITLE BAND ───────────────────────────────────────────────────────
