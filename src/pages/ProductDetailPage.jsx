@@ -107,8 +107,7 @@ const ProductDetailPage = () => {
           </div>
 
           {/* Qty + Add */}
-          {product.inStock !== false ? (
-            <div className="flex gap-4 items-center mb-6">
+          <div className="flex gap-4 items-center mb-6">
               <div className="flex items-center gap-3 glass-card px-4 py-3 rounded-xl">
                 <button onClick={() => setQty(q => Math.max(1, q - 1))} className="w-8 h-8 rounded-full bg-yellow-500/10 hover:bg-yellow-500/20 text-white font-bold flex items-center justify-center transition-all">-</button>
                 <span className="w-8 text-center font-bold text-white text-lg">{qty}</span>
@@ -118,11 +117,6 @@ const ProductDetailPage = () => {
                 <ShoppingCart className="w-5 h-5" /> Add to Quote Request
               </button>
             </div>
-          ) : (
-            <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-red-400 text-center font-medium mb-6">
-              Currently Out of Stock
-            </div>
-          )}
 
           <button onClick={() => navigate('/cart')} className="btn-outline-gold w-full justify-center">
             View Quote Cart

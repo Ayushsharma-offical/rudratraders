@@ -156,9 +156,7 @@ const ProductsPage = () => {
                   {product.tag && (
                     <span className="absolute top-3 left-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-md">{product.tag}</span>
                   )}
-                  {product.inStock === false && (
-                    <span className="absolute top-3 right-3 bg-red-600/90 text-white text-xs font-bold px-2 py-1 rounded-md">Out of Stock</span>
-                  )}
+
                   {/* Hover Overlay */}
                   <div className="absolute inset-0 bg-yellow-500/0 group-hover:bg-yellow-500/5 transition-all duration-300 flex items-center justify-center">
                     <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full transition-all">View Details</span>
@@ -191,8 +189,7 @@ const ProductsPage = () => {
                     </div>
                     <button
                       onClick={e => handleAddCart(product, e)}
-                      disabled={product.inStock === false}
-                      className="btn-coral w-full justify-center text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="btn-coral w-full justify-center text-sm"
                     >
                       <ShoppingCart className="w-4 h-4" /> Add to Quote
                     </button>
