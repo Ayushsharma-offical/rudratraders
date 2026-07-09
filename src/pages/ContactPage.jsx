@@ -115,9 +115,6 @@ const ContactPage = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { label: 'GST Number', value: '07BCFPK2624A1Z7' },
-              { label: 'Bank', value: 'Axis Bank' },
-              { label: 'Account No', value: '924020061654700' },
-              { label: 'IFSC Code', value: 'UTIB0000644' },
             ].map((item, i) => (
               <div key={i}>
                 <div className="text-xs text-gray-500 uppercase tracking-widest mb-1 font-medium">{item.label}</div>

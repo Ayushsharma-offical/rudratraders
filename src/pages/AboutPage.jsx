@@ -12,7 +12,7 @@ const AboutPage = () => {
 
   const team = [
     { name: 'Reshu Ranjan', role: 'CEO', desc: 'With a deep passion for empowering small businesses, Reshu leads Rudra Traders to new heights.', mediaType: 'video', media: '/ceo-video.mp4' },
-    { name: 'Manas Kumar', role: 'Logistics Head', desc: 'Our logistics expert ensuring every order is dispatched on time and delivered safely across India.', mediaType: 'icon' },
+    { name: 'Amit Kumar', role: 'Logistics Head', desc: 'Our logistics expert ensuring every order is dispatched on time and delivered safely across India.', mediaType: 'icon' },
     { name: 'Ayush Sharma', role: 'Technical Head', desc: 'Industry expert who verifies quality, capacity, and efficiency of every machine in our catalog.', mediaType: 'image', media: '/ayush-sharma.jpg' },
   ];
 
