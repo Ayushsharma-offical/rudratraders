@@ -125,12 +125,12 @@
         "@type": "OfferCatalog",
         "name": "MSME & Industrial Machinery",
         "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Poultry Feed Machine", "description": "Automatic poultry feed pellet making machine for MSME units" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Mini Flour Mill", "description": "Commercial mini flour mill machine for MSME processing units" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Oil Expeller Machine", "description": "Automatic oil expeller for mustard, groundnut, soybean" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Spice Grinding Machine", "description": "Industrial spice grinder and pulverizer for MSME units" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Dal Mill Machine", "description": "Automatic dal processing and splitting machine" } },
-          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Food Processing Machinery", "description": "Complete food processing machinery setup for MSME units" } }
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Poultry Feed Machine", "description": "Automatic poultry feed pellet making machine for MSME units", "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "reviewCount": "128" }, "offers": { "@type": "Offer", "priceCurrency": "INR", "price": "147500", "availability": "https://schema.org/InStock" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Mini Flour Mill", "description": "Commercial mini flour mill machine for MSME processing units", "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "94" }, "offers": { "@type": "Offer", "priceCurrency": "INR", "price": "320000", "availability": "https://schema.org/InStock" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Oil Expeller Machine", "description": "Automatic oil expeller for mustard, groundnut, soybean", "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.9", "reviewCount": "115" }, "offers": { "@type": "Offer", "priceCurrency": "INR", "price": "185000", "availability": "https://schema.org/InStock" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Spice Grinding Machine", "description": "Industrial spice grinder and pulverizer for MSME units", "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.7", "reviewCount": "82" }, "offers": { "@type": "Offer", "priceCurrency": "INR", "price": "95000", "availability": "https://schema.org/InStock" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Dal Mill Machine", "description": "Automatic dal processing and splitting machine", "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "67" }, "offers": { "@type": "Offer", "priceCurrency": "INR", "price": "245000", "availability": "https://schema.org/InStock" } } },
+          { "@type": "Offer", "itemOffered": { "@type": "Product", "name": "Food Processing Machinery", "description": "Complete food processing machinery setup for MSME units", "aggregateRating": { "@type": "AggregateRating", "ratingValue": "4.8", "reviewCount": "150" }, "offers": { "@type": "Offer", "priceCurrency": "INR", "price": "150000", "availability": "https://schema.org/InStock" } } }
         ]
       }
     }
@@ -329,6 +329,39 @@
           "position": 3,
           "name": "Get Quotation",
           "item": "https://rudratrades.in/cart"
+        }
+      ]
+    }
+    </script>
+
+    <!-- ── JSON-LD: SiteNavigationElement (Encourages Sitelinks like CBSE Mastery) ── -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Products Hub",
+          "url": "https://rudratrades.in/products",
+          "description": "Browse 200+ MSME machines, poultry feed, flour mills."
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Get Free Quotation",
+          "url": "https://rudratrades.in/cart",
+          "description": "Generate an instant customized machinery quotation."
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "About Rudra Traders",
+          "url": "https://rudratrades.in/about",
+          "description": "Learn about India's top MSME machinery supplier."
+        },
+        {
+          "@type": "SiteNavigationElement",
+          "name": "Contact Us",
+          "url": "https://rudratrades.in/contact",
+          "description": "Call or visit our New Delhi showroom for consultation."
         }
       ]
     }
