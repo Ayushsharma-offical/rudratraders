@@ -340,13 +340,13 @@ const CartPage = () => {
           <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
              <h3 className="text-yellow-400 font-bold mb-2 text-lg">Your Quotation is Ready</h3>
              <p className="text-sm text-gray-400 mb-4">Click below to generate and download your PDF.</p>
-             <button onClick={() => {
+             <button onClick={async () => {
                  const items = cart.map(i => ({
                    description: String(i.name || 'Machinery Item'),
                    quantity: Number(i.quantity) || 1,
                    rate: Number(i.price) || 0
                  }));
-                 generateQuotation(client, items, refCounter.toString());
+                 await generateQuotation(client, items, refCounter.toString());
                  setPdfDownloaded(true);
              }} className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)]">
                 <Download className="w-5 h-5" /> Download Quotation PDF

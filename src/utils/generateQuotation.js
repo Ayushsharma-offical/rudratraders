@@ -1,310 +1,403 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const formatCurrency = (amount) => {
-  const rounded = Math.round(amount);
-  const x = rounded.toString();
-  const lastThree = x.substring(x.length - 3);
-  const otherNumbers = x.substring(0, x.length - 3);
-  if (otherNumbers !== '') {
-    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree;
-  }
-  return lastThree;
+// ─── Indian Number Format ───────────────────────────────────────────────────
+const fmt = (n) => {
+  const r = Math.round(n).toString();
+  const last3 = r.slice(-3);
+  const rest = r.slice(0, -3);
+  return rest ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3 : last3;
 };
 
+// ─── Number to Words ────────────────────────────────────────────────────────
 export const numToWords = (num) => {
   const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
-    'Seventeen', 'Eighteen', 'Nineteen'];
+    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
   const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-
   if (num === 0) return 'Zero';
-  if (num < 0) return 'Minus ' + numToWords(-num);
-
-  let words = '';
-  if (Math.floor(num / 10000000) > 0) {
-    words += numToWords(Math.floor(num / 10000000)) + ' Crore ';
-    num %= 10000000;
-  }
-  if (Math.floor(num / 100000) > 0) {
-    words += numToWords(Math.floor(num / 100000)) + ' Lakh ';
-    num %= 100000;
-  }
-  if (Math.floor(num / 1000) > 0) {
-    words += numToWords(Math.floor(num / 1000)) + ' Thousand ';
-    num %= 1000;
-  }
-  if (Math.floor(num / 100) > 0) {
-    words += numToWords(Math.floor(num / 100)) + ' Hundred ';
-    num %= 100;
-  }
-  if (num > 0) {
-    if (num < 20) {
-      words += ones[num];
-    } else {
-      words += tens[Math.floor(num / 10)];
-      if (num % 10 > 0) words += ' ' + ones[num % 10];
-    }
-  }
-  return words.trim();
+  let w = '';
+  if (Math.floor(num / 10000000) > 0) { w += numToWords(Math.floor(num / 10000000)) + ' Crore '; num %= 10000000; }
+  if (Math.floor(num / 100000) > 0)   { w += numToWords(Math.floor(num / 100000)) + ' Lakh '; num %= 100000; }
+  if (Math.floor(num / 1000) > 0)     { w += numToWords(Math.floor(num / 1000)) + ' Thousand '; num %= 1000; }
+  if (Math.floor(num / 100) > 0)      { w += numToWords(Math.floor(num / 100)) + ' Hundred '; num %= 100; }
+  if (num > 0) { w += num < 20 ? ones[num] : tens[Math.floor(num / 10)] + (num % 10 > 0 ? ' ' + ones[num % 10] : ''); }
+  return w.trim();
 };
 
-export const generateQuotation = (clientDetails, items, refNo) => {
+// ─── Stamp SVG → base64 PNG via canvas ─────────────────────────────────────
+const getStampBase64 = () => new Promise((resolve) => {
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <defs>
+      <path id="topArc" d="M 20,100 A 80,80 0 0,1 180,100"/>
+      <path id="botArc" d="M 30,115 A 75,75 0 0,0 170,115"/>
+    </defs>
+    <!-- outer ring -->
+    <circle cx="100" cy="100" r="92" fill="none" stroke="#6b21a8" stroke-width="4"/>
+    <circle cx="100" cy="100" r="84" fill="none" stroke="#6b21a8" stroke-width="1.5"/>
+    <!-- stars -->
+    <text x="18" y="108" fill="#6b21a8" font-size="16" font-family="serif">&#9733;</text>
+    <text x="164" y="108" fill="#6b21a8" font-size="16" font-family="serif">&#9733;</text>
+    <!-- top arc text -->
+    <text fill="#6b21a8" font-size="15" font-family="Arial" font-weight="bold" letter-spacing="3">
+      <textPath href="#topArc" startOffset="8%">RUDRA TRADERS</textPath>
+    </text>
+    <!-- inner circle -->
+    <circle cx="100" cy="100" r="52" fill="none" stroke="#6b21a8" stroke-width="1.2"/>
+    <!-- New Delhi -->
+    <text x="100" y="97" fill="#6b21a8" font-size="13" font-family="Arial" font-weight="bold" text-anchor="middle">New Delhi</text>
+    <!-- signature scribble -->
+    <path d="M72,112 Q85,104 100,112 Q115,120 128,112" fill="none" stroke="#6b21a8" stroke-width="1.5" stroke-linecap="round"/>
+    <!-- bottom arc text -->
+    <text fill="#6b21a8" font-size="13" font-family="Arial" font-weight="bold" letter-spacing="2">
+      <textPath href="#botArc" startOffset="12%">Uttam Nagar</textPath>
+    </text>
+  </svg>`;
+
+  const img = new Image();
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    resolve(canvas.toDataURL('image/png'));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+  img.src = url;
+});
+
+// ─── MAIN FUNCTION ──────────────────────────────────────────────────────────
+export const generateQuotation = async (clientDetails, items, refNo) => {
+  const stampBase64 = await getStampBase64();
+
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 15;
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = 14; // margin
 
-  // ----- HEADER BAR -----
-  doc.setFillColor(26, 54, 54); // brand green
-  doc.rect(0, 0, pageW, 42, 'F');
+  // ── DARK HEADER ──────────────────────────────────────────────────────────
+  doc.setFillColor(15, 23, 42);        // deep navy
+  doc.rect(0, 0, pageW, 46, 'F');
 
-  // Company Name (left)
+  // Gold left accent bar
+  doc.setFillColor(212, 175, 55);
+  doc.rect(0, 0, 4, 46, 'F');
+
+  // Company name
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.setTextColor(212, 175, 55); // gold
-  doc.text('RUDRA TRADERS', margin, 17);
+  doc.setFontSize(20);
+  doc.setTextColor(212, 175, 55);
+  doc.text('RUDRA TRADERS', M + 4, 16);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(200, 200, 200);
-  doc.text('MSME Machinery Specialists', margin, 23);
-  doc.text('GST No: 07BCFPK2624A1Z7', margin, 29);
+  doc.setTextColor(180, 180, 190);
+  doc.text('MSME Machinery Specialists — Est. 2020', M + 4, 22);
+  doc.text('GST No: 07BCFPK2624A1Z7', M + 4, 28);
+  doc.text('Website: rudratrades.in', M + 4, 34);
 
-  // Company details (right)
-  const rightX = pageW - margin;
-  doc.setFontSize(8.5);
-  doc.setTextColor(200, 200, 200);
-  doc.text('Address: 255 A, Vipin Garden, Uttam Nagar', rightX, 12, { align: 'right' });
-  doc.text('New Delhi - 110059', rightX, 17, { align: 'right' });
-  doc.text('Phone: +91 7982813507', rightX, 22, { align: 'right' });
-  doc.text('Email: rudratraders.store@gmail.com', rightX, 27, { align: 'right' });
+  // Right block
+  const rX = pageW - M;
+  doc.setFontSize(8);
+  doc.setTextColor(200, 200, 210);
+  doc.text('255-A, Vipin Garden, Uttam Nagar', rX, 14, { align: 'right' });
+  doc.text('New Delhi – 110059, India', rX, 20, { align: 'right' });
+  doc.text('+91 7982813507 | +91 8130957597', rX, 26, { align: 'right' });
+  doc.text('rudratraders.store@gmail.com', rX, 32, { align: 'right' });
 
-  // ----- QUOTATION TITLE -----
+  // ── GOLD TITLE BAND ───────────────────────────────────────────────────────
   doc.setFillColor(212, 175, 55);
-  doc.rect(0, 42, pageW, 10, 'F');
+  doc.rect(0, 46, pageW, 10, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(10, 15, 15);
-  doc.text('QUOTATION', pageW / 2, 49, { align: 'center' });
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text('QUOTATION', pageW / 2, 53, { align: 'center' });
 
-  // ----- REF & DATE -----
-  let y = 62;
+  // ── REF & DATE ROW ───────────────────────────────────────────────────────
+  let y = 63;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setTextColor(60, 60, 60);
-  doc.text(`Ref. No.: ${refNo}`, margin, y);
-  doc.text(`Date: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`, rightX, y, { align: 'right' });
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.text(`Ref. No.: QT-${refNo}`, M, y);
+  doc.text(`Date: ${dateStr}`, pageW - M, y, { align: 'right' });
 
-  // ----- CLIENT DETAILS -----
+  // thin divider
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(0.4);
+  doc.line(M, y + 3, pageW - M, y + 3);
+
+  // ── CLIENT BOX ───────────────────────────────────────────────────────────
   y += 8;
-  doc.setFillColor(245, 245, 240);
-  doc.roundedRect(margin, y, pageW - margin * 2, 38, 2, 2, 'F');
+  const clientBoxH = 38;
+  doc.setFillColor(245, 247, 250);
+  doc.roundedRect(M, y, pageW - M * 2, clientBoxH, 2, 2, 'F');
+  doc.setDrawColor(200, 205, 215);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, pageW - M * 2, clientBoxH, 2, 2, 'S');
+
+  // "BILL TO" label
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(M, y, 32, 7, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(212, 175, 55);
+  doc.text('BILL TO', M + 5, y + 5);
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(26, 54, 54);
-  doc.text('QUOTATION TO:', margin + 4, y + 8);
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${clientDetails.name || ''}`, M + 4, y + 14);
 
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(40, 40, 40);
-  doc.text(`Mr. ${clientDetails.name}`, margin + 4, y + 16);
-  if (clientDetails.careOf) doc.text(`S/O: ${clientDetails.careOf}`, margin + 4, y + 22);
+  doc.setFontSize(8.5);
+  doc.setTextColor(60, 60, 70);
+  let clientY = y + 21;
+  if (clientDetails.careOf)  { doc.text(`S/O: ${clientDetails.careOf}`, M + 4, clientY); clientY += 6; }
   if (clientDetails.address) {
-    const addr = doc.splitTextToSize(clientDetails.address, 100);
-    doc.text(addr, margin + 4, clientDetails.careOf ? y + 28 : y + 22);
+    const addrLines = doc.splitTextToSize(clientDetails.address, 100);
+    doc.text(addrLines, M + 4, clientY);
+    clientY += addrLines.length * 5;
   }
-  if (clientDetails.phone) doc.text(`Mob: ${clientDetails.phone}`, margin + 4, y + 34);
-  if (clientDetails.pincode) doc.text(`PIN: ${clientDetails.pincode}`, margin + 80, y + 34);
+  if (clientDetails.phone)   doc.text(`Mobile: ${clientDetails.phone}`, M + 4, clientY);
 
-  // Right side of client box
+  // Right half: project
+  const midX = pageW / 2 + 4;
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(midX, y, 32, 7, 1, 1, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(26, 54, 54);
-  doc.text('Project:', pageW / 2 + 10, y + 8);
+  doc.setFontSize(7);
+  doc.setTextColor(212, 175, 55);
+  doc.text('PROJECT', midX + 4, y + 5);
+
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(40, 40, 40);
-  const projTitle = doc.splitTextToSize(clientDetails.projectType || 'Machinery Unit', 75);
-  doc.text(projTitle, pageW / 2 + 10, y + 14);
+  doc.setFontSize(8.5);
+  doc.setTextColor(60, 60, 70);
+  const projLines = doc.splitTextToSize(clientDetails.projectType || 'Machinery Processing Unit', 72);
+  doc.text(projLines, midX + 4, y + 15);
 
-  y += 46;
+  if (clientDetails.pincode) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`PIN: ${clientDetails.pincode}`, midX + 4, y + 30);
+  }
 
-  // ----- SUBJECT LINE -----
+  y += clientBoxH + 6;
+
+  // ── SUBJECT LINE ─────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'italic');
-  doc.setFontSize(9);
-  doc.setTextColor(60, 60, 60);
-  doc.text(`Sub: Quotation for machinery required for ${clientDetails.projectType || 'processing unit'}.`, margin, y);
-  y += 8;
+  doc.setFontSize(8.5);
+  doc.setTextColor(70, 70, 80);
+  doc.text(
+    `Sub: Quotation for machinery required for ${clientDetails.projectType || 'processing unit'}.`,
+    M, y
+  );
+  y += 7;
 
-  // ----- ITEMS TABLE -----
+  // ── ITEMS TABLE ───────────────────────────────────────────────────────────
   let totalExGST = 0;
-  const tableData = items.map((item, i) => {
-    const amount = parseFloat(item.rate) * parseInt(item.quantity || 1);
-    totalExGST += amount;
+  const tableRows = items.map((item, i) => {
+    const amt = parseFloat(item.rate) * parseInt(item.quantity || 1);
+    totalExGST += amt;
     return [
       i + 1,
       item.description,
       item.quantity || 1,
-      `Rs. ${formatCurrency(parseFloat(item.rate))}`,
-      `Rs. ${formatCurrency(amount)}`,
+      `Rs. ${fmt(parseFloat(item.rate))}`,
+      `Rs. ${fmt(amt)}`,
     ];
   });
 
   autoTable(doc, {
     startY: y,
-    head: [['S.No.', 'Description', 'Unit', 'Rate (INR)', 'Amount (INR)']],
-    body: tableData,
+    head: [['S.No.', 'Description of Goods', 'Qty', 'Unit Rate (INR)', 'Amount (INR)']],
+    body: tableRows,
     theme: 'grid',
     headStyles: {
-      fillColor: [26, 54, 54],
+      fillColor: [15, 23, 42],
       textColor: [212, 175, 55],
       fontStyle: 'bold',
       fontSize: 9,
       halign: 'center',
+      cellPadding: 3,
     },
     bodyStyles: {
       fontSize: 9,
-      textColor: [40, 40, 40],
+      textColor: [30, 30, 40],
+      cellPadding: 2.5,
     },
     columnStyles: {
       0: { cellWidth: 12, halign: 'center' },
       1: { cellWidth: 85 },
-      2: { cellWidth: 18, halign: 'center' },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 35, halign: 'right' },
+      2: { cellWidth: 16, halign: 'center' },
+      3: { cellWidth: 33, halign: 'right' },
+      4: { cellWidth: 34, halign: 'right' },
     },
-    margin: { left: margin, right: margin },
-    alternateRowStyles: { fillColor: [248, 248, 245] },
-    styles: { lineColor: [200, 200, 200], lineWidth: 0.3 },
+    alternateRowStyles: { fillColor: [248, 249, 252] },
+    styles: { lineColor: [210, 215, 225], lineWidth: 0.25 },
+    margin: { left: M, right: M },
   });
 
-  const afterTable = doc.lastAutoTable.finalY;
-  y = afterTable + 4;
+  y = doc.lastAutoTable.finalY + 4;
 
-  // ----- TOTALS -----
+  // ── TOTALS ────────────────────────────────────────────────────────────────
   const gst = totalExGST * 0.18;
-  const grandTotal = totalExGST + gst;
+  const grand = totalExGST + gst;
+  const totW = 80, totX = pageW - M - totW;
 
-  doc.setFillColor(245, 245, 240);
-  doc.rect(pageW - margin - 75, y, 75, 8, 'F');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(40, 40, 40);
-  doc.text('Sub Total:', pageW - margin - 73, y + 5.5);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Rs. ${formatCurrency(totalExGST)}`, pageW - margin - 2, y + 5.5, { align: 'right' });
-  y += 8;
+  const drawTotRow = (label, value, bg, textClr, bold) => {
+    doc.setFillColor(...bg);
+    doc.rect(totX, y, totW, 8, 'F');
+    doc.setFont('helvetica', bold ? 'bold' : 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(...textClr);
+    doc.text(label, totX + 3, y + 5.5);
+    doc.text(`Rs. ${fmt(value)}`, pageW - M - 2, y + 5.5, { align: 'right' });
+    y += 8;
+  };
 
-  doc.setFillColor(238, 238, 232);
-  doc.rect(pageW - margin - 75, y, 75, 8, 'F');
-  doc.setFont('helvetica', 'normal');
-  doc.text('GST @18%:', pageW - margin - 73, y + 5.5);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Rs. ${formatCurrency(gst)}`, pageW - margin - 2, y + 5.5, { align: 'right' });
-  y += 8;
+  drawTotRow('Sub Total (Ex. GST)', totalExGST, [242, 244, 248], [40, 40, 50], false);
+  drawTotRow('GST @ 18%', gst, [235, 237, 245], [40, 40, 50], false);
+  drawTotRow('GRAND TOTAL (INR)', grand, [15, 23, 42], [212, 175, 55], true);
+  y += 4;
 
-  doc.setFillColor(26, 54, 54);
-  doc.rect(pageW - margin - 75, y, 75, 10, 'F');
+  // ── AMOUNT IN WORDS ───────────────────────────────────────────────────────
+  doc.setFillColor(255, 252, 235);
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(M, y, pageW - M * 2, 11, 1.5, 1.5, 'FD');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Amount in Words:', M + 3, y + 7.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(50, 50, 60);
+  const words = `${numToWords(Math.round(grand))} Rupees Only`;
+  doc.text(words, M + 43, y + 7.5);
+  y += 17;
+
+  // ── BANK DETAILS + SIGNATORY ───────────────────────────────────────────────
+  const bankW = (pageW - M * 2) * 0.54;
+  const sigW  = (pageW - M * 2) * 0.42;
+  const sigX  = M + bankW + (pageW - M * 2) * 0.04;
+  const sectionH = 44;
+
+  // Bank box
+  doc.setFillColor(245, 247, 250);
+  doc.setDrawColor(200, 205, 215);
+  doc.setLineWidth(0.25);
+  doc.roundedRect(M, y, bankW, sectionH, 2, 2, 'FD');
+
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(M, y, 38, 7, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
   doc.setTextColor(212, 175, 55);
-  doc.text('TOTAL INR:', pageW - margin - 73, y + 7);
-  doc.text(`Rs. ${formatCurrency(grandTotal)}`, pageW - margin - 2, y + 7, { align: 'right' });
-  y += 16;
+  doc.text('BANK DETAILS', M + 4, y + 5);
 
-  // ----- AMOUNT IN WORDS -----
-  doc.setFillColor(255, 250, 230);
-  doc.roundedRect(margin, y, pageW - margin * 2, 12, 2, 2, 'F');
+  doc.setFontSize(8.5);
+  doc.setTextColor(40, 40, 50);
+  const bx = M + 4;
+  const vx = M + 40;
+  const bankItems = [
+    ['Account Name', 'Rudra Traders'],
+    ['Account No.',  '924020061654700'],
+    ['Bank Name',    'Axis Bank'],
+    ['IFSC Code',    'UTIB0000644'],
+    ['Branch',       'Uttam Nagar, New Delhi'],
+  ];
+  bankItems.forEach(([label, val], i) => {
+    const by = y + 13 + i * 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 90);
+    doc.text(`${label}:`, bx, by);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(val, vx, by);
+  });
+
+  // Signatory box
+  doc.setFillColor(245, 247, 250);
+  doc.setDrawColor(200, 205, 215);
+  doc.roundedRect(sigX, y, sigW, sectionH, 2, 2, 'FD');
+
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(sigX, y, 42, 7, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(212, 175, 55);
+  doc.text('AUTHORISED SIGNATORY', sigX + 3, y + 5);
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8.5);
-  doc.setTextColor(26, 54, 54);
-  doc.text('Amount in words:', margin + 4, y + 8);
+  doc.setTextColor(15, 23, 42);
+  doc.text('For Rudra Traders', sigX + 4, y + 14);
+
+  // Stamp (SVG rendered)
+  if (stampBase64) {
+    doc.addImage(stampBase64, 'PNG', sigX + 2, y + 14, 32, 32);
+  }
+
+  // Signature line
+  doc.setDrawColor(80, 80, 90);
+  doc.setLineWidth(0.5);
+  doc.line(sigX + 4, y + sectionH - 6, sigX + sigW - 4, y + sectionH - 6);
   doc.setFont('helvetica', 'italic');
-  doc.setTextColor(40, 40, 40);
-  const amtWords = `${numToWords(Math.round(grandTotal))} Rupees Only`;
-  doc.text(amtWords, margin + 42, y + 8);
-  y += 18;
+  doc.setFontSize(7.5);
+  doc.setTextColor(70, 70, 80);
+  doc.text('(Authorised Signatory)', sigX + sigW / 2, y + sectionH - 2, { align: 'center' });
 
-  // ----- BANK DETAILS -----
-  doc.setFillColor(245, 245, 240);
-  doc.roundedRect(margin, y, (pageW - margin * 2) * 0.55, 42, 2, 2, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(26, 54, 54);
-  doc.text('Bank Details:', margin + 4, y + 8);
+  y += sectionH + 7;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(40, 40, 40);
-  const bankY = y + 15;
-  doc.text('Account Name:', margin + 4, bankY);
+  // ── TERMS ─────────────────────────────────────────────────────────────────
   doc.setFont('helvetica', 'bold');
-  doc.text('Rudra Traders', margin + 38, bankY);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Account No:', margin + 4, bankY + 7);
-  doc.setFont('helvetica', 'bold');
-  doc.text('924020061654700', margin + 38, bankY + 7);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Bank:', margin + 4, bankY + 14);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Axis Bank', margin + 38, bankY + 14);
-  doc.setFont('helvetica', 'normal');
-  doc.text('IFSC Code:', margin + 4, bankY + 21);
-  doc.setFont('helvetica', 'bold');
-  doc.text('UTIB0000644', margin + 38, bankY + 21);
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Terms & Conditions:', M, y);
+  y += 5;
 
-  // ----- SIGNATORY (right of bank) -----
-  const sigX = margin + (pageW - margin * 2) * 0.58;
-  doc.setDrawColor(100, 100, 100);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(26, 54, 54);
-  doc.text('For Rudra Traders', sigX, y + 8);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(80, 80, 80);
-  doc.text('(Authorised Signatory)', sigX, y + 38);
-  doc.line(sigX, y + 36, sigX + 60, y + 36);
-
-  y += 48;
-
-  // ----- TERMS -----
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(80, 80, 80);
   const terms = [
-    '• The above quoted prices are inclusive of GST (18%).',
-    '• Transportation charges will be extra as per actuals.',
-    '• 100% advance payment before dispatch.',
-    '• Delivery within 7–15 working days after payment confirmation.',
-    '• This quotation is valid for 30 days from the date of issue.',
+    '1. Prices quoted are subject to GST @ 18% as applicable.',
+    '2. Transportation & installation charges will be extra as per actuals.',
+    '3. 100% advance payment required before dispatch of goods.',
+    '4. Delivery: 7–15 working days after receipt of payment.',
+    '5. Warranty as per manufacturer terms. No warranty on electrical parts.',
+    '6. This quotation is valid for 30 days from the date of issue.',
   ];
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(26, 54, 54);
-  doc.text('Terms & Conditions:', margin, y);
-  y += 6;
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(80, 80, 80);
+  doc.setFontSize(8);
+  doc.setTextColor(60, 65, 75);
   terms.forEach(t => {
-    doc.text(t, margin, y);
-    y += 5.5;
+    doc.text(t, M, y);
+    y += 5.2;
   });
 
-  // ----- FOOTER -----
-  doc.setFillColor(26, 54, 54);
-  doc.rect(0, doc.internal.pageSize.getHeight() - 12, pageW, 12, 'F');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(212, 175, 55);
-  doc.text('Thank you for your business! | rudratraders.store@gmail.com | +91 7982813507', pageW / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
+  // ── FOOTER ────────────────────────────────────────────────────────────────
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, pageH - 13, pageW, 13, 'F');
 
-  // Save / Show
+  doc.setFillColor(212, 175, 55);
+  doc.rect(0, pageH - 13, pageW, 1.5, 'F');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(180, 180, 195);
+  doc.text(
+    'Thank you for your business!  |  rudratrades.in  |  rudratraders.store@gmail.com  |  +91 7982813507',
+    pageW / 2, pageH - 5.5, { align: 'center' }
+  );
+
+  // ── SAVE / SHOW ────────────────────────────────────────────────────────────
   const safeName = (clientDetails.name || 'Client').replace(/\s+/g, '_');
   const filename = `Rudra_Traders_Quotation_${safeName}_${refNo}.pdf`;
-  
+
   if (window.AndroidApp) {
-    // Mobile App: show inline in-app PDF viewer
     const base64 = doc.output('datauristring').split(',')[1];
     window.AndroidApp.showPdf(base64, filename);
   } else {
-    // Normal Web Browser: trigger download
     doc.save(filename);
   }
 };
