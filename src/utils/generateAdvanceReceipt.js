@@ -1,213 +1,319 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { numToWords } from './generateQuotation'; // Note: numToWords needs to be exported from generateQuotation.js or duplicated here. I will just duplicate it for simplicity since it's not exported.
+import { numToWords } from './generateQuotation';
 
-const formatCurrency = (amount) => {
-  const rounded = Math.round(amount);
-  const x = rounded.toString();
-  const lastThree = x.substring(x.length - 3);
-  const otherNumbers = x.substring(0, x.length - 3);
-  if (otherNumbers !== '') {
-    return otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + "," + lastThree;
-  }
-  return lastThree;
+const fmt = (n) => {
+  const r = Math.round(n).toString();
+  const last3 = r.slice(-3);
+  const rest = r.slice(0, -3);
+  return rest ? rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',') + ',' + last3 : last3;
 };
 
-const numberToWords = (num) => {
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen',
-    'Seventeen', 'Eighteen', 'Nineteen'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+// ─── Stamp SVG → base64 PNG via canvas ─────────────────────────────────────
+const getStampBase64 = () => new Promise((resolve) => {
+  const svgStr = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <defs>
+      <path id="topArc" d="M 20,100 A 80,80 0 0,1 180,100"/>
+      <path id="botArc" d="M 30,115 A 75,75 0 0,0 170,115"/>
+    </defs>
+    <circle cx="100" cy="100" r="92" fill="none" stroke="#6b21a8" stroke-width="4"/>
+    <circle cx="100" cy="100" r="84" fill="none" stroke="#6b21a8" stroke-width="1.5"/>
+    <text x="18" y="108" fill="#6b21a8" font-size="16" font-family="serif">&#9733;</text>
+    <text x="164" y="108" fill="#6b21a8" font-size="16" font-family="serif">&#9733;</text>
+    <text fill="#6b21a8" font-size="15" font-family="Arial" font-weight="bold" letter-spacing="3">
+      <textPath href="#topArc" startOffset="8%">RUDRA TRADERS</textPath>
+    </text>
+    <circle cx="100" cy="100" r="52" fill="none" stroke="#6b21a8" stroke-width="1.2"/>
+    <text x="100" y="97" fill="#6b21a8" font-size="13" font-family="Arial" font-weight="bold" text-anchor="middle">New Delhi</text>
+    <path d="M72,112 Q85,104 100,112 Q115,120 128,112" fill="none" stroke="#6b21a8" stroke-width="1.5" stroke-linecap="round"/>
+    <text fill="#6b21a8" font-size="13" font-family="Arial" font-weight="bold" letter-spacing="2">
+      <textPath href="#botArc" startOffset="12%">Uttam Nagar</textPath>
+    </text>
+  </svg>`;
 
-  if (num === 0) return 'Zero';
-  if (num < 0) return 'Minus ' + numberToWords(-num);
+  const img = new Image();
+  const svgBlob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(svgBlob);
+  img.onload = () => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 200;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    resolve(canvas.toDataURL('image/png'));
+  };
+  img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+  img.src = url;
+});
 
-  let words = '';
-  if (Math.floor(num / 10000000) > 0) {
-    words += numberToWords(Math.floor(num / 10000000)) + ' Crore ';
-    num %= 10000000;
-  }
-  if (Math.floor(num / 100000) > 0) {
-    words += numberToWords(Math.floor(num / 100000)) + ' Lakh ';
-    num %= 100000;
-  }
-  if (Math.floor(num / 1000) > 0) {
-    words += numberToWords(Math.floor(num / 1000)) + ' Thousand ';
-    num %= 1000;
-  }
-  if (Math.floor(num / 100) > 0) {
-    words += numberToWords(Math.floor(num / 100)) + ' Hundred ';
-    num %= 100;
-  }
-  if (num > 0) {
-    if (num < 20) {
-      words += ones[num];
-    } else {
-      words += tens[Math.floor(num / 10)];
-      if (num % 10 > 0) words += ' ' + ones[num % 10];
-    }
-  }
-  return words.trim();
-};
+// ─── MAIN ADVANCE RECEIPT GENERATOR ─────────────────────────────────────────
+export const generateAdvanceReceipt = async (clientDetails, amountPaid, orderId, totalAmount = amountPaid) => {
+  const stampBase64 = await getStampBase64();
 
-export const generateAdvanceReceipt = (clientDetails, amountPaid, orderId, totalAmount = amountPaid) => {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW = doc.internal.pageSize.getWidth();
-  const margin = 15;
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = 14;
 
-  // ----- HEADER BAR -----
-  doc.setFillColor(26, 54, 54); // brand green
-  doc.rect(0, 0, pageW, 42, 'F');
+  // ── DARK HEADER ──────────────────────────────────────────────────────────
+  doc.setFillColor(15, 23, 42); // deep navy
+  doc.rect(0, 0, pageW, 46, 'F');
 
-  // Company Name (left)
+  // Gold left accent bar
+  doc.setFillColor(212, 175, 55);
+  doc.rect(0, 0, 4, 46, 'F');
+
+  // Company name
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
-  doc.setTextColor(212, 175, 55); // gold
-  doc.text('RUDRA TRADERS', margin, 17);
+  doc.setFontSize(20);
+  doc.setTextColor(212, 175, 55);
+  doc.text('RUDRA TRADERS', M + 4, 16);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(200, 200, 200);
-  doc.text('MSME Machinery Specialists', margin, 23);
-  doc.text('GST No: 07BCFPK2624A1Z7', margin, 29);
+  doc.setTextColor(180, 180, 190);
+  doc.text('MSME Machinery Specialists — Est. 2020', M + 4, 22);
+  doc.text('GST No: 07BCFPK2624A1Z7', M + 4, 28);
+  doc.text('Website: rudratrades.in', M + 4, 34);
 
-  // Company details (right)
-  const rightX = pageW - margin;
-  doc.setFontSize(8.5);
-  doc.setTextColor(200, 200, 200);
-  doc.text('Address: 255 A, Vipin Garden, Uttam Nagar', rightX, 12, { align: 'right' });
-  doc.text('New Delhi - 110059', rightX, 17, { align: 'right' });
-  doc.text('Phone: +91 7982813507', rightX, 22, { align: 'right' });
-  doc.text('Email: rudratraders.store@gmail.com', rightX, 27, { align: 'right' });
+  // Right block
+  const rX = pageW - M;
+  doc.setFontSize(8);
+  doc.setTextColor(200, 200, 210);
+  doc.text('255-A, Vipin Garden, Uttam Nagar', rX, 14, { align: 'right' });
+  doc.text('New Delhi – 110059, India', rX, 20, { align: 'right' });
+  doc.text('+91 7982813507 | +91 8130957597', rX, 26, { align: 'right' });
+  doc.text('rudratraders.store@gmail.com', rX, 32, { align: 'right' });
 
-  // ----- RECEIPT TITLE -----
+  // ── GOLD TITLE BAND ───────────────────────────────────────────────────────
   doc.setFillColor(212, 175, 55);
-  doc.rect(0, 42, pageW, 10, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
-  doc.setTextColor(10, 15, 15);
-  doc.text('PAYMENT RECEIPT', pageW / 2, 49, { align: 'center' });
-
-  // ----- REF & DATE -----
-  let y = 62;
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(60, 60, 60);
-  doc.text(`Order ID: ${orderId}`, margin, y);
-  doc.text(`Date: ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`, rightX, y, { align: 'right' });
-
-  // ----- CLIENT DETAILS -----
-  y += 8;
-  doc.setFillColor(245, 245, 240);
-  doc.roundedRect(margin, y, pageW - margin * 2, 38, 2, 2, 'F');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(26, 54, 54);
-  doc.text('RECEIVED FROM:', margin + 4, y + 8);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(40, 40, 40);
-  doc.text(`Mr. ${clientDetails.name}`, margin + 4, y + 16);
-  if (clientDetails.careOf) doc.text(`S/O: ${clientDetails.careOf}`, margin + 4, y + 22);
-  if (clientDetails.address) {
-    const addr = doc.splitTextToSize(clientDetails.address, 100);
-    doc.text(addr, margin + 4, clientDetails.careOf ? y + 28 : y + 22);
-  }
-  if (clientDetails.phone) doc.text(`Mob: ${clientDetails.phone}`, margin + 4, y + 34);
-  
-  y += 46;
-
-  // ----- PAYMENT DETAILS -----
+  doc.rect(0, 46, pageW, 10, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.setTextColor(26, 54, 54);
-  doc.text('Payment Summary', margin, y);
+  doc.setTextColor(15, 23, 42);
+  doc.text('PAYMENT RECEIPT', pageW / 2, 53, { align: 'center' });
+
+  // ── REF & DATE ROW ───────────────────────────────────────────────────────
+  let y = 63;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(60, 60, 60);
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+  doc.text(`Order ID: ${orderId}`, M, y);
+  doc.text(`Date: ${dateStr}`, pageW - M, y, { align: 'right' });
+
+  // thin divider
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(0.4);
+  doc.line(M, y + 3, pageW - M, y + 3);
+
+  // ── CLIENT BOX ───────────────────────────────────────────────────────────
   y += 8;
+  const clientBoxH = 38;
+  doc.setFillColor(245, 247, 250);
+  doc.roundedRect(M, y, pageW - M * 2, clientBoxH, 2, 2, 'F');
+  doc.setDrawColor(200, 205, 215);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, pageW - M * 2, clientBoxH, 2, 2, 'S');
+
+  // "RECEIVED FROM" label
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(M, y, 32, 7, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(212, 175, 55);
+  doc.text('RECEIVED FROM', M + 3, y + 5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${clientDetails.name || ''}`, M + 4, y + 14);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(60, 60, 70);
+  let clientY = y + 21;
+  if (clientDetails.careOf)  { doc.text(`S/O: ${clientDetails.careOf}`, M + 4, clientY); clientY += 6; }
+  if (clientDetails.address) {
+    const addrLines = doc.splitTextToSize(clientDetails.address, 100);
+    doc.text(addrLines, M + 4, clientY);
+    clientY += addrLines.length * 5;
+  }
+  if (clientDetails.phone)   doc.text(`Mobile: ${clientDetails.phone}`, M + 4, clientY);
+
+  // Right half info
+  const midX = pageW / 2 + 4;
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(midX, y, 32, 7, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(212, 175, 55);
+  doc.text('ORDER SUMMARY', midX + 3, y + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(60, 60, 70);
+  doc.text(`Order Reference: ${orderId.substring(0, 14)}...`, midX + 4, y + 15);
+  if (clientDetails.pincode) doc.text(`PIN: ${clientDetails.pincode}`, midX + 4, y + 22);
+
+  y += clientBoxH + 6;
+
+  // ── PAYMENT SUMMARY TABLE ────────────────────────────────────────────────
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Payment Information', M, y);
+  y += 5;
 
   const tableBody = [];
   if (totalAmount > amountPaid) {
-    tableBody.push(['Total Order Value', `Rs. ${formatCurrency(totalAmount)}`]);
-    tableBody.push([`Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]);
-    tableBody.push(['Amount Pending', `Rs. ${formatCurrency(totalAmount - amountPaid)}`]);
+    tableBody.push(['Total Order Value (incl. GST)', `Rs. ${fmt(totalAmount)}`]);
+    tableBody.push([`Advance Payment Received (via UPI/Razorpay)`, `Rs. ${fmt(amountPaid)}`]);
+    tableBody.push(['Pending Amount', `Rs. ${fmt(totalAmount - amountPaid)}`]);
   } else {
-    tableBody.push([`Full Payment Received for Order ${orderId}`, `Rs. ${formatCurrency(amountPaid)}`]);
+    tableBody.push([`Full Payment Received (Order Confirmation)`, `Rs. ${fmt(amountPaid)}`]);
   }
 
   autoTable(doc, {
     startY: y,
-    head: [['Description', 'Amount (INR)']],
+    head: [['Transaction Details', 'Amount (INR)']],
     body: tableBody,
     theme: 'grid',
     headStyles: {
-      fillColor: [26, 54, 54],
+      fillColor: [15, 23, 42],
       textColor: [212, 175, 55],
       fontStyle: 'bold',
-      fontSize: 10,
+      fontSize: 9,
     },
     bodyStyles: {
-      fontSize: 10,
-      textColor: [40, 40, 40],
+      fontSize: 9,
+      textColor: [30, 30, 40],
     },
     columnStyles: {
       0: { cellWidth: 120 },
-      1: { cellWidth: 50, halign: 'right' },
+      1: { cellWidth: 62, halign: 'right' },
     },
-    margin: { left: margin, right: margin },
+    margin: { left: M, right: M },
   });
 
-  const afterTable = doc.lastAutoTable.finalY;
-  y = afterTable + 10;
+  y = doc.lastAutoTable.finalY + 6;
 
-  // ----- AMOUNT IN WORDS -----
-  doc.setFillColor(255, 250, 230);
-  doc.roundedRect(margin, y, pageW - margin * 2, 12, 2, 2, 'F');
+  // ── AMOUNT IN WORDS ───────────────────────────────────────────────────────
+  doc.setFillColor(255, 252, 235);
+  doc.setDrawColor(212, 175, 55);
+  doc.setLineWidth(0.4);
+  doc.roundedRect(M, y, pageW - M * 2, 11, 1.5, 1.5, 'FD');
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.setTextColor(26, 54, 54);
-  doc.text('Amount in words:', margin + 4, y + 8);
+  doc.setFontSize(8);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Amount in Words:', M + 3, y + 7.5);
   doc.setFont('helvetica', 'italic');
-  doc.setTextColor(40, 40, 40);
-  const amtWords = `${numberToWords(Math.round(amountPaid))} Rupees Only`;
-  doc.text(amtWords, margin + 42, y + 8);
-  y += 24;
+  doc.setTextColor(50, 50, 60);
+  const words = `${numToWords(Math.round(amountPaid))} Rupees Only`;
+  doc.text(words, M + 43, y + 7.5);
+  y += 17;
 
-  // ----- MESSAGE / SIGNATURE -----
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(40, 40, 40);
-  doc.text('This is a computer-generated receipt for your payment.', margin, y);
-  doc.text('We will begin processing your machinery order immediately.', margin, y + 6);
-  
-  const sigX = margin + (pageW - margin * 2) * 0.65;
+  // ── BANK DETAILS + SIGNATORY ───────────────────────────────────────────────
+  const bankW = (pageW - M * 2) * 0.54;
+  const sigW  = (pageW - M * 2) * 0.42;
+  const sigX  = M + bankW + (pageW - M * 2) * 0.04;
+  const sectionH = 44;
+
+  // Bank box
+  doc.setFillColor(245, 247, 250);
+  doc.setDrawColor(200, 205, 215);
+  doc.setLineWidth(0.25);
+  doc.roundedRect(M, y, bankW, sectionH, 2, 2, 'FD');
+
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(M, y, 38, 7, 1, 1, 'F');
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(26, 54, 54);
-  doc.text('For Rudra Traders', sigX, y + 6);
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(80, 80, 80);
-  doc.text('(Authorised Signatory)', sigX, y + 26);
-  doc.setDrawColor(100, 100, 100);
-  doc.line(sigX, y + 24, sigX + 50, y + 24);
-
-  // ----- FOOTER -----
-  doc.setFillColor(26, 54, 54);
-  doc.rect(0, doc.internal.pageSize.getHeight() - 12, pageW, 12, 'F');
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(212, 175, 55);
-  doc.text('Thank you for your business! | rudratraders.store@gmail.com | +91 7982813507', pageW / 2, doc.internal.pageSize.getHeight() - 5, { align: 'center' });
+  doc.text('BANK DETAILS', M + 4, y + 5);
 
-  // Save / Show
+  doc.setFontSize(8.5);
+  doc.setTextColor(40, 40, 50);
+  const bx = M + 4;
+  const vx = M + 40;
+  const bankItems = [
+    ['Account Name', 'Rudra Traders'],
+    ['Account No.',  '924020061654700'],
+    ['Bank Name',    'Axis Bank'],
+    ['IFSC Code',    'UTIB0000644'],
+    ['Branch',       'Uttam Nagar, New Delhi'],
+  ];
+  bankItems.forEach(([label, val], i) => {
+    const by = y + 13 + i * 7;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 90);
+    doc.text(`${label}:`, bx, by);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(val, vx, by);
+  });
+
+  // Signatory box
+  doc.setFillColor(245, 247, 250);
+  doc.setDrawColor(200, 205, 215);
+  doc.roundedRect(sigX, y, sigW, sectionH, 2, 2, 'FD');
+
+  doc.setFillColor(15, 23, 42);
+  doc.roundedRect(sigX, y, 42, 7, 1, 1, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(212, 175, 55);
+  doc.text('AUTHORISED SIGNATORY', sigX + 3, y + 5);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(15, 23, 42);
+  doc.text('For Rudra Traders', sigX + 4, y + 14);
+
+  if (stampBase64) {
+    doc.addImage(stampBase64, 'PNG', sigX + 2, y + 14, 32, 32);
+  }
+
+  doc.setDrawColor(80, 80, 90);
+  doc.setLineWidth(0.5);
+  doc.line(sigX + 4, y + sectionH - 6, sigX + sigW - 4, y + sectionH - 6);
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7.5);
+  doc.setTextColor(70, 70, 80);
+  doc.text('(Authorised Signatory)', sigX + sigW / 2, y + sectionH - 2, { align: 'center' });
+
+  y += sectionH + 6;
+
+  // ── SYSTEM NOTE ──────────────────────────────────────────────────────────
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(70, 70, 80);
+  doc.text('Note: This is a system-generated transaction confirmation and serves as advance/full payment receipt.', M, y);
+  y += 5;
+
+  // ── FOOTER ────────────────────────────────────────────────────────────────
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, pageH - 13, pageW, 13, 'F');
+
+  doc.setFillColor(212, 175, 55);
+  doc.rect(0, pageH - 13, pageW, 1.5, 'F');
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(180, 180, 195);
+  doc.text(
+    'Thank you for your business!  |  rudratrades.in  |  rudratraders.store@gmail.com  |  +91 7982813507',
+    pageW / 2, pageH - 5.5, { align: 'center' }
+  );
+
+  // ── SAVE / SHOW ────────────────────────────────────────────────────────────
   const safeName = (clientDetails.name || 'Client').replace(/\s+/g, '_');
-  const filename = `Rudra_Traders_Payment_Receipt_${safeName}.pdf`;
-  
+  const filename = `Rudra_Traders_Receipt_${safeName}_${orderId}.pdf`;
+
   if (window.AndroidApp) {
-    // Mobile App: show inline in-app PDF viewer
     const base64 = doc.output('datauristring').split(',')[1];
     window.AndroidApp.showPdf(base64, filename);
   } else {
-    // Normal Web Browser: trigger download
     doc.save(filename);
   }
 };

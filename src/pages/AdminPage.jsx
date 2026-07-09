@@ -490,7 +490,7 @@ const AdminQuotation = () => {
     try {
       const refNo = (parseInt(localStorage.getItem('rudra_ref') || '65') + 1).toString();
       localStorage.setItem('rudra_ref', refNo);
-      generateQuotation(client, items, refNo);
+      await generateQuotation(client, items, refNo);
       try {
         await push(ref(rtdb, 'quotes'), {
           clientDetails: client, items, refNo,
@@ -614,18 +614,18 @@ const ClientRequests = () => {
     setDeletingId(null);
   };
 
-  const handleDownload = (q) => {
+  const handleDownload = async (q) => {
     try {
-      generateQuotation(q.clientDetails || {}, q.items || [], q.refNo || 'N/A');
+      await generateQuotation(q.clientDetails || {}, q.items || [], q.refNo || 'N/A');
     } catch (err) {
       console.error(err);
       alert('Could not regenerate PDF.');
     }
   };
 
-  const handleDownloadReceipt = (q) => {
+  const handleDownloadReceipt = async (q) => {
     try {
-      generateAdvanceReceipt(q.clientDetails || {}, q.advanceAmount || 0, q.razorpay_order_id || 'N/A');
+      await generateAdvanceReceipt(q.clientDetails || {}, q.advanceAmount || 0, q.razorpay_order_id || 'N/A');
     } catch (err) {
       console.error(err);
       alert('Could not regenerate Advance Receipt.');
