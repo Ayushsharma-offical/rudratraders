@@ -92,7 +92,7 @@ const Navbar = () => {
     <nav className={`sticky top-0 z-50 w-full flex justify-center py-3 px-4 md:px-8 transition-all duration-300 ${scrolled ? 'bg-[#0a0806]/40 backdrop-blur-md' : 'bg-transparent'}`}>
       
       {/* Volumetric Island Navbar */}
-      <div id="navbar" className="navbar-starry relative w-full max-w-7xl rounded-2xl px-5 md:px-8 py-3 flex items-center justify-between">
+      <div id="navbar" className="navbar-starry relative w-full max-w-7xl rounded-2xl px-4 md:px-8 py-3.5 flex items-center justify-between">
         
         {/* Star Field & Shooting Star */}
         <div className="star-field">
@@ -117,28 +117,28 @@ const Navbar = () => {
         <div className="shooting-star"></div>
 
         {/* Brand Logo & Same-line typography with separate clicks */}
-        <Link to="/" className="relative z-10 flex items-center gap-3 select-none" onClick={() => setMobileOpen(false)}>
-          <div className="brand-logo-3d w-9 h-9 md:w-10 md:h-10 rounded-xl text-white font-black text-base md:text-lg flex-shrink-0">
+        <Link to="/" className="relative z-10 flex items-center gap-2 select-none" onClick={() => setMobileOpen(false)}>
+          <div className="brand-logo-3d w-9 h-9 rounded-lg text-white font-bold text-base flex-shrink-0">
             R
           </div>
-          <div className="brand-text-3d text-[1.1rem] md:text-[1.25rem] font-black uppercase tracking-wider">
+          <div className="brand-text-3d">
             <span className={`brand-text-rudra ${rudraColorClass}`} onClick={cycleRudraColor}>Rudra</span>
             <span className={`brand-text-traders ${tradersColorClass}`} onClick={cycleTradersColor}>Traders</span>
           </div>
         </Link>
 
         {/* Desktop Links - Centered */}
-        <div className="hidden md:flex items-center gap-2 relative z-10">
+        <div className="hidden md:flex items-center gap-6 relative z-10">
           {links.map(l => {
             const isActive = pathname === l.to || (l.to === '/' && pathname === '/');
             return (
               <Link
                 key={l.to}
                 to={l.to}
-                className={`nav-link-3d text-sm font-semibold transition-all ${
+                className={`nav-link-3d text-[14.5px] font-semibold transition-all ${
                   isActive 
                   ? 'nav-link-3d-active text-white' 
-                  : 'text-gray-300 hover:text-white'
+                  : 'text-[#ece5dd] hover:text-white'
                 }`}
               >
                 {l.label}
@@ -149,24 +149,25 @@ const Navbar = () => {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2 relative z-10">
-          <button className="icon-btn-3d text-gray-300 hover:text-white transition-colors hidden md:flex">
-            <Search className="w-4 h-4 md:w-5 md:h-5" />
+          {/* Search Button — Desktop Only */}
+          <button className="icon-btn-3d hidden md:flex items-center justify-center text-gray-300 hover:text-white transition-colors">
+            <Search className="w-4.5 h-4.5" />
           </button>
 
-          {/* Admin Button */}
+          {/* Admin Button — Desktop/Tablet Only */}
           <button
             onClick={() => { navigate('/admin'); setMobileOpen(false); }}
-            className="admin-pill-3d header-admin-btn flex items-center gap-1.5 transition-all text-xs font-bold uppercase tracking-wider"
+            className="admin-pill-3d hidden sm:flex items-center gap-1.5 transition-all text-xs font-bold uppercase tracking-wider"
             title="Admin Portal"
           >
             <Lock className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="hidden sm:inline">Admin</span>
           </button>
 
-          {/* Cart */}
+          {/* Cart — Always Visible */}
           <button
             onClick={() => { navigate('/cart'); setMobileOpen(false); }}
-            className="icon-btn-3d text-gray-300 hover:text-white"
+            className="icon-btn-3d flex items-center justify-center text-gray-300 hover:text-white"
             aria-label="Cart"
           >
             <ShoppingCart className="w-4.5 h-4.5" />
@@ -177,17 +178,17 @@ const Navbar = () => {
             )}
           </button>
 
-          {/* Order Now — desktop/tablet only */}
+          {/* Order Now — Desktop Only */}
           <button
             onClick={() => navigate('/cart')}
-            className="order-btn-3d header-order-btn text-sm ml-1"
+            className="order-btn-3d hidden md:flex items-center text-sm ml-1"
           >
             Order Now <ArrowRight className="w-4 h-4" />
           </button>
 
-          {/* Custom Animated Hamburger — mobile only */}
+          {/* Custom Animated Hamburger — Mobile Only */}
           <button 
-            className={`hamburger-btn-3d md:hidden ml-1 ${mobileOpen ? 'open' : ''}`} 
+            className={`hamburger-btn-3d flex flex-col items-center justify-center md:hidden ml-1 ${mobileOpen ? 'open' : ''}`} 
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Toggle Menu"
           >

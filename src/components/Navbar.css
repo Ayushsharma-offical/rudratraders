@@ -151,8 +151,8 @@
 
 .brand-text-3d {
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: baseline;
+  gap: 5px;
   transform-style: preserve-3d;
   perspective: 1000px;
 }
@@ -161,6 +161,18 @@
   display: inline-block;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.brand-text-rudra {
+  font-size: 1.25rem;
+  font-weight: 800;
+  text-transform: none; /* Keep Title Case */
+}
+
+.brand-text-traders {
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-transform: none; /* Keep Title Case */
 }
 
 /* 3D Brand Color States */
@@ -279,7 +291,8 @@
 .t-emerald:hover {
   text-shadow: 
     0 2px 0 #0a4030, 
-    0 4px 0 #05261d, 0 6px 8px rgba(0, 0, 0, 0.6),
+    0 4px 0 #05261d, 
+    0 6px 8px rgba(0, 0, 0, 0.6),
     0 0 15px rgba(15, 92, 70, 0.45);
 }
 
@@ -296,15 +309,13 @@
 .nav-link-3d {
   position: relative;
   transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  padding: 6px 12px;
-  border-radius: 8px;
+  padding: 6px 4px;
   transform-style: preserve-3d;
 }
 
 .nav-link-3d:hover {
-  transform: translateY(-3px) translateZ(8px);
-  text-shadow: 0 3px 6px rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px) translateZ(5px);
+  text-shadow: 0 2px 4px rgba(255, 255, 255, 0.3);
   color: #ffffff !important;
 }
 
@@ -314,28 +325,23 @@
 
 .nav-link-3d-active {
   color: #ffffff !important;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .nav-link-3d-active::after {
   content: '';
   position: absolute;
-  left: 15%;
-  right: 15%;
+  left: 0;
+  right: 0;
   bottom: -2px;
-  height: 3px;
-  border-radius: 3px;
+  height: 2.5px;
+  border-radius: 2px;
   background: linear-gradient(90deg, var(--coral), var(--coral-2));
-  box-shadow: 0 0 10px rgba(226, 104, 92, 0.9);
+  box-shadow: 0 0 8px rgba(226, 104, 92, 0.8);
 }
 
 /* ── 3D Buttons & Pills ─────────────────────────────────────────── */
 .order-btn-3d {
   position: relative;
-  display: flex;
-  align-items: center;
   gap: 8px;
   padding: 10px 20px;
   border-radius: 999px;
@@ -367,8 +373,6 @@
 }
 
 .admin-pill-3d {
-  display: flex;
-  align-items: center;
   gap: 6px;
   padding: 8px 16px;
   border-radius: 999px;
@@ -402,9 +406,6 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: #ece5dd;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -435,10 +436,6 @@
   position: relative;
   width: 40px;
   height: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
   gap: 5px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -584,17 +581,4 @@
   transform: translateY(15px);
   animation: slideInItem 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   margin-top: 8px;
-}
-
-/* ── Layout fixes for mobile / custom display classes ───────────────── */
-@media (max-width: 767px) {
-  .header-order-btn {
-    display: none !important;
-  }
-}
-
-@media (max-width: 500px) {
-  .header-admin-btn {
-    display: none !important;
-  }
 }
