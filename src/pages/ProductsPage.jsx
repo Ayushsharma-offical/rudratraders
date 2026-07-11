@@ -143,7 +143,7 @@ const ProductsPage = () => {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filtered.map(product => (
-            <TiltCard key={product.id} onClick={() => navigate(`/products/${product.id}`)}>
+            <TiltCard key={product.id}>
               <div className="glass-card rounded-2xl overflow-hidden group border border-white/10 hover:border-yellow-500/30 transition-colors">
                 {/* Image */}
                 <div className="relative h-52 overflow-hidden">
@@ -156,11 +156,6 @@ const ProductsPage = () => {
                   {product.tag && (
                     <span className="absolute top-3 left-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-md">{product.tag}</span>
                   )}
-
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-yellow-500/0 group-hover:bg-yellow-500/5 transition-all duration-300 flex items-center justify-center">
-                    <span className="opacity-0 group-hover:opacity-100 text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full transition-all">View Details</span>
-                  </div>
                 </div>
 
                 {/* Info */}

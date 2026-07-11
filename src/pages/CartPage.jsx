@@ -28,6 +28,7 @@ const CartPage = () => {
   const [showTerms, setShowTerms] = useState(false);
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [skipQuotation, setSkipQuotation] = useState(false);
+  const [receiptDetails, setReceiptDetails] = useState(null);
   useEffect(() => {
     setCart(getCart());
     const handler = () => setCart(getCart());
@@ -179,12 +180,15 @@ const CartPage = () => {
 
               setShowTerms(false);
               setStep(3);
+              setPaying(false);
             } else {
               alert('Payment Verification Failed!');
+              setPaying(false);
             }
           } catch (err) {
             console.error('Verify error:', err);
             alert('Verification Error. Please contact support.');
+            setPaying(false);
           }
         },
         prefill: {
@@ -193,19 +197,24 @@ const CartPage = () => {
         },
         theme: {
           color: "#d4af37"
+        },
+        modal: {
+          ondismiss: function() {
+            setPaying(false);
+          }
         }
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response){
         alert('Payment Failed: ' + response.error.description);
+        setPaying(false);
       });
       rzp.open();
 
     } catch (error) {
       console.error('Payment initiation error:', error);
       alert('Could not start payment: ' + error.message);
-    } finally {
       setPaying(false);
     }
   };
@@ -264,14 +273,8 @@ const CartPage = () => {
             
             if (result.success) {
               setPaymentSuccess(true);
+              setReceiptDetails({ paymentAmount, order_id: order.order_id });
               
-              // Generate payment receipt
-              try {
-                generateAdvanceReceipt(client, paymentAmount, order.order_id);
-              } catch (receiptErr) {
-                console.error('Failed to generate receipt:', receiptErr);
-              }
-
               // Update status in RTDB
               try {
                 if (quoteId) {
@@ -286,12 +289,15 @@ const CartPage = () => {
                   });
                 }
               } catch (e) { console.error('Error updating status:', e); }
+              setPaying(false);
             } else {
               alert('Payment Verification Failed!');
+              setPaying(false);
             }
           } catch (err) {
             console.error('Verify error:', err);
             alert('Verification Error. Please contact support.');
+            setPaying(false);
           }
         },
         prefill: {
@@ -300,6 +306,11 @@ const CartPage = () => {
         },
         theme: {
           color: "#d4af37" // gold
+        },
+        modal: {
+          ondismiss: function() {
+            setPaying(false);
+          }
         }
       };
 
@@ -310,13 +321,13 @@ const CartPage = () => {
       rzp.on('payment.failed', function (response){
         console.error('Payment failed full response:', JSON.stringify(response));
         alert('Payment Failed: ' + response.error.code + ' - ' + response.error.description);
+        setPaying(false);
       });
       rzp.open();
 
     } catch (error) {
       console.error('Payment initiation error:', error);
       alert('Could not start payment: ' + error.message);
-    } finally {
       setPaying(false);
     }
   };
@@ -360,9 +371,16 @@ const CartPage = () => {
               </div>
             )}
             {paymentSuccess ? (
-              <div className="mb-8 p-4 bg-green-500/10 border border-green-500/30 rounded-2xl">
-                <h3 className="text-green-400 font-bold mb-1">Payment Received</h3>
-                <p className="text-sm text-green-500/70">Your order is confirmed. We will process it immediately.</p>
+              <div className="mb-8 p-6 bg-green-500/10 border border-green-500/30 rounded-2xl shadow-[0_0_20px_rgba(74,222,128,0.1)]">
+                <h3 className="text-green-400 font-bold mb-2 text-lg">Payment Received</h3>
+                <p className="text-sm text-gray-400 mb-6">Your order is confirmed. We will process it immediately.</p>
+                {receiptDetails && (
+                  <button onClick={async () => {
+                    await generateAdvanceReceipt(client, receiptDetails.paymentAmount, receiptDetails.order_id);
+                  }} className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)]">
+                    <Download className="w-5 h-5" /> Download Payment Receipt
+                  </button>
+                )}
               </div>
             ) : (
               <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
