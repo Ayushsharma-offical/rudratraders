@@ -120,12 +120,12 @@ const ProductsPage = () => {
       </div>
 
       {/* Category Pills */}
-      <div className="flex flex-wrap gap-3 mb-10">
+      <div className="flex overflow-x-auto gap-3 mb-10 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {CATEGORIES.map(cat => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
+            className={`whitespace-nowrap shrink-0 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
               category === cat
                 ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.3)] border border-orange-400'
                 : 'bg-[#121212]/80 text-gray-400 border border-white/10 hover:border-white/20 hover:text-white hover:bg-white/5 backdrop-blur-md'
