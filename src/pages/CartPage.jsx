@@ -161,7 +161,7 @@ const CartPage = () => {
               };
 
               try {
-                const newQuoteRef = await push(ref(rtdb, 'quotes'), {
+                const newQuoteRef = push(ref(rtdb, 'quotes'), {
                   userId: user ? user.uid : 'guest',
                   clientDetails: safeClient,
                   items: items,
@@ -279,7 +279,7 @@ const CartPage = () => {
               try {
                 if (quoteId) {
                   const statusLabel = paymentAmount >= Math.round(total) ? 'Full Payment Received' : 'Token Paid';
-                  await update(ref(rtdb, `quotes/${quoteId}`), {
+                  update(ref(rtdb, `quotes/${quoteId}`), {
                     paymentStatus: statusLabel,
                     advanceAmount: paymentAmount, // Keeping field name for backwards compatibility
                     totalAmount: Math.round(total),
