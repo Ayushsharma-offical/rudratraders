@@ -67,41 +67,56 @@ const ProductsPage = () => {
   if (sortBy === 'rating') filtered = [...filtered].sort((a, b) => b.rating - a.rating);
 
   return (
-    <div className="pt-28 min-h-screen max-w-7xl mx-auto px-6 pb-20">
-      {/* Page Header */}
-      <div className="mb-10">
-        <div className="badge-gold inline-block mb-4">MSME Machinery Catalog</div>
-        <h1 className="text-4xl font-black text-white mb-3">Industrial <span className="gold-text">Machinery</span></h1>
-        <p className="text-gray-400 max-w-2xl">High-performance, MSME-grade industrial equipment. Add to cart to generate your custom quotation instantly.</p>
+    <div className="relative min-h-screen pb-20 overflow-hidden">
+      {/* Background glow effects based on the image */}
+      <div className="absolute top-0 left-0 w-full h-screen pointer-events-none overflow-hidden -z-10">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-orange-900/20 blur-[120px] rounded-full"></div>
+        <div className="absolute top-[10%] -right-[10%] w-[40%] h-[60%] bg-emerald-900/10 blur-[120px] rounded-full"></div>
       </div>
+      
+      <div className="pt-28 max-w-7xl mx-auto px-6 relative z-10">
+        {/* Page Header */}
+        <div className="mb-10">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-orange-500/30 bg-orange-500/10 text-orange-500 text-xs font-bold tracking-wider mb-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-orange-500"></span>
+            MSME MACHINERY CATALOG
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">Industrial <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-400">Machinery</span></h1>
+          <p className="text-gray-300 text-lg max-w-2xl">High-performance, MSME-grade industrial equipment. Add to cart to generate your custom quotation instantly.</p>
+        </div>
 
       {/* Search & Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row gap-4 mb-8">
         <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
             type="text"
             placeholder="Search machinery..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="input-dark pl-12 bg-[#4a2e1b]/80 border-white/20 focus:border-[#d4af37]"
+            className="w-full pl-12 pr-10 h-12 bg-[#121212]/80 border border-white/10 hover:border-white/20 focus:border-orange-500/50 rounded-2xl text-white outline-none transition-all text-sm font-medium backdrop-blur-md"
           />
           {search && (
-            <button onClick={() => setSearch('')} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
+            <button onClick={() => setSearch('')} className="absolute right-5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white">
               <X className="w-4 h-4" />
             </button>
           )}
         </div>
-        <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value)}
-          className="input-dark md:w-52 cursor-pointer bg-[#4a2e1b]/80 border-white/20 hover:border-[#d4af37] focus:border-[#d4af37]"
-        >
-          <option value="default">Sort By: Default</option>
-          <option value="price-asc">Price: Low to High</option>
-          <option value="price-desc">Price: High to Low</option>
-          <option value="rating">Highest Rated</option>
-        </select>
+        <div className="relative sm:w-64">
+          <select
+            value={sortBy}
+            onChange={e => setSortBy(e.target.value)}
+            className="w-full h-12 appearance-none pl-5 pr-10 bg-[#121212]/80 border border-white/10 hover:border-white/20 focus:border-emerald-500/50 rounded-2xl text-white outline-none transition-all text-sm font-medium cursor-pointer backdrop-blur-md"
+          >
+            <option value="default" className="bg-[#121212]">Sort By: Default</option>
+            <option value="price-asc" className="bg-[#121212]">Price: Low to High</option>
+            <option value="price-desc" className="bg-[#121212]">Price: High to Low</option>
+            <option value="rating" className="bg-[#121212]">Highest Rated</option>
+          </select>
+          <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
+            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+          </div>
+        </div>
       </div>
 
       {/* Category Pills */}
@@ -110,10 +125,10 @@ const ProductsPage = () => {
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+            className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 ${
               category === cat
-                ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/30'
-                : 'bg-white/5 text-gray-400 border border-white/10 hover:border-yellow-500/40 hover:text-yellow-400'
+                ? 'bg-gradient-to-r from-orange-400 to-orange-500 text-black shadow-[0_0_20px_rgba(249,115,22,0.3)] border border-orange-400'
+                : 'bg-[#121212]/80 text-gray-400 border border-white/10 hover:border-white/20 hover:text-white hover:bg-white/5 backdrop-blur-md'
             }`}
           >
             {cat}
@@ -122,8 +137,8 @@ const ProductsPage = () => {
       </div>
 
       {/* Results Count */}
-      <div className="text-gray-500 text-sm mb-6">
-        Showing <span className="text-yellow-400 font-semibold">{filtered.length}</span> machines
+      <div className="text-gray-400 text-lg mb-8 font-medium">
+        Showing <span className="text-orange-500 font-bold">{filtered.length}</span> machines
       </div>
 
       {/* Grid */}
@@ -197,6 +212,7 @@ const ProductsPage = () => {
       )}
 
       {toast && <Toast msg={toast} onClose={() => setToast('')} />}
+      </div>
     </div>
   );
 };
