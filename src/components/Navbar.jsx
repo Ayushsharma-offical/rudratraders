@@ -94,27 +94,29 @@ const Navbar = () => {
       {/* Volumetric Island Navbar */}
       <div id="navbar" className="navbar-starry relative w-full max-w-7xl rounded-2xl px-4 md:px-8 py-3.5 flex items-center justify-between">
         
-        {/* Star Field & Shooting Star */}
-        <div className="star-field">
-          {stars.map(s => (
-            <div
-              key={s.id}
-              className={`star ${s.big ? 'big' : ''}`}
-              style={{
-                width: `${s.size}px`,
-                height: `${s.size}px`,
-                left: s.left,
-                top: s.top,
-                '--dur': s.dur,
-                '--min-op': s.minOp,
-                '--ddur': s.ddur,
-                '--dx': s.dx,
-                animationDelay: s.delay
-              }}
-            />
-          ))}
+        {/* Starry Background Container (Clips stars cleanly without breaking absolute menu) */}
+        <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none z-0">
+          <div className="star-field">
+            {stars.map(s => (
+              <div
+                key={s.id}
+                className={`star ${s.big ? 'big' : ''}`}
+                style={{
+                  width: `${s.size}px`,
+                  height: `${s.size}px`,
+                  left: s.left,
+                  top: s.top,
+                  '--dur': s.dur,
+                  '--min-op': s.minOp,
+                  '--ddur': s.ddur,
+                  '--dx': s.dx,
+                  animationDelay: s.delay
+                }}
+              />
+            ))}
+          </div>
+          <div className="shooting-star"></div>
         </div>
-        <div className="shooting-star"></div>
 
         {/* Brand Logo & Same-line typography with separate clicks */}
         <Link to="/" className="relative z-10 flex items-center gap-2 select-none" onClick={() => setMobileOpen(false)}>
@@ -154,16 +156,6 @@ const Navbar = () => {
             <Search className="w-4.5 h-4.5" />
           </button>
 
-          {/* Admin Button — Desktop/Tablet Only */}
-          <button
-            onClick={() => { navigate('/admin'); setMobileOpen(false); }}
-            className="admin-pill-3d hidden sm:flex items-center gap-1.5 transition-all text-xs font-bold uppercase tracking-wider"
-            title="Admin Portal"
-          >
-            <Lock className="w-3.5 h-3.5 flex-shrink-0" />
-            <span className="hidden sm:inline">Admin</span>
-          </button>
-
           {/* Cart — Always Visible */}
           <button
             onClick={() => { navigate('/cart'); setMobileOpen(false); }}
@@ -176,6 +168,16 @@ const Navbar = () => {
                 {cartCount}
               </span>
             )}
+          </button>
+
+          {/* Admin Button — Always Visible (Pill on Desktop, Red Lock Circle on Mobile) */}
+          <button
+            onClick={() => { navigate('/admin'); setMobileOpen(false); }}
+            className="admin-pill-3d flex items-center gap-1.5 transition-all text-xs font-bold uppercase tracking-wider"
+            title="Admin Portal"
+          >
+            <Lock className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="hidden sm:inline">Admin</span>
           </button>
 
           {/* Order Now — Desktop Only */}
