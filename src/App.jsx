@@ -113,11 +113,19 @@ const IntroScreen = ({ onComplete }) => {
   );
 };
 const App = () => {
-  const [showIntro, setShowIntro] = useState(true);
+  const [showIntro, setShowIntro] = useState(() => {
+    return !sessionStorage.getItem('intro_played');
+  });
+
+  const handleIntroComplete = () => {
+    sessionStorage.setItem('intro_played', 'true');
+    setShowIntro(false);
+  };
+
   return (
     <BrowserRouter>
       {showIntro ? (
-        <IntroScreen onComplete={() => setShowIntro(false)} />
+        <IntroScreen onComplete={handleIntroComplete} />
       ) : (
         <AppShell />
       )}
