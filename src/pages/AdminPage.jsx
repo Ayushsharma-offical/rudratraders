@@ -584,6 +584,8 @@ const ClientRequests = () => {
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const cardRefs = useRef({});
 
   const fetchQuotes = async () => {
     setLoading(true);
@@ -606,12 +608,27 @@ const ClientRequests = () => {
 
   useEffect(() => { fetchQuotes(); }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchQuotes();
+    setTimeout(() => setRefreshing(false), 400);
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this request permanently?')) return;
     setDeletingId(id);
-    try { await remove(ref(rtdb, `quotes/${id}`)); setQuotes(q => q.filter(x => x.id !== id)); }
-    catch (err) { console.error(err); }
-    setDeletingId(null);
+    // Animate out
+    const el = cardRefs.current[id];
+    if (el) {
+      el.style.transition = 'all 0.3s ease';
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-30px) scale(0.96)';
+    }
+    setTimeout(async () => {
+      try { await remove(ref(rtdb, `quotes/${id}`)); setQuotes(q => q.filter(x => x.id !== id)); }
+      catch (err) { console.error(err); }
+      setDeletingId(null);
+    }, 300);
   };
 
   const handleDownload = async (q) => {
@@ -632,95 +649,306 @@ const ClientRequests = () => {
     }
   };
 
+  // 3D tilt effect
+  const handleMouseMove = (e, id) => {
+    const el = cardRefs.current[id];
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const cx = x - rect.width / 2;
+    const cy = y - rect.height / 2;
+    const rotY = (cx / rect.width) * 2.5;
+    const rotX = -(cy / rect.height) * 2.5;
+    el.style.transform = `perspective(1400px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateY(-4px)`;
+    el.style.setProperty('--mx', x + 'px');
+    el.style.setProperty('--my', y + 'px');
+  };
+
+  const handleMouseLeave = (id) => {
+    const el = cardRefs.current[id];
+    if (!el) return;
+    el.style.transform = 'perspective(1400px) rotateX(0) rotateY(0) translateY(0)';
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.trim().split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  };
+
+  const getStatusConfig = (q) => {
+    if (q.paymentStatus === 'Full Payment Received') return {
+      bg: 'linear-gradient(135deg, rgba(23,192,129,0.14), rgba(23,192,129,0.04))',
+      border: 'rgba(23,192,129,0.3)', color: '#4ade80', dotColor: '#17c081',
+      icon: '✓', text: `Full Payment Received — ₹${(q.advanceAmount || 0).toLocaleString()}`
+    };
+    if (q.paymentStatus === 'Token Paid' || q.paymentStatus === 'Advance Received') return {
+      bg: 'linear-gradient(135deg, rgba(91,157,255,0.14), rgba(91,157,255,0.04))',
+      border: 'rgba(91,157,255,0.3)', color: '#8bb8ff', dotColor: '#5b9dff',
+      icon: '✓', text: `${q.paymentStatus} — ₹${(q.advanceAmount || 0).toLocaleString()}`
+    };
+    if (q.quotationFeePaid) return {
+      bg: 'linear-gradient(135deg, rgba(91,157,255,0.14), rgba(91,157,255,0.04))',
+      border: 'rgba(91,157,255,0.3)', color: '#8bb8ff', dotColor: '#5b9dff',
+      icon: '✓', text: 'Quotation Generated (₹20 Paid)'
+    };
+    return {
+      bg: 'linear-gradient(135deg, rgba(224,178,61,0.14), rgba(224,178,61,0.04))',
+      border: 'rgba(224,178,61,0.3)', color: '#e0b23d', dotColor: '#e0b23d',
+      icon: '⏳', text: q.paymentStatus || 'Pending'
+    };
+  };
+
+  // ── CSS for animations (injected once) ──
+  useEffect(() => {
+    if (document.getElementById('req-card-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'req-card-styles';
+    style.textContent = `
+      @keyframes reqCardIn {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes reqStatusPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+      }
+      .req-card-anim {
+        animation: reqCardIn 0.4s ease both;
+        transform-style: preserve-3d;
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.35s;
+      }
+      .req-card-anim:hover {
+        box-shadow: 0 26px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,122,61,0.2) !important;
+      }
+      .req-glow {
+        position: absolute; inset: 0; opacity: 0; transition: opacity 0.35s; pointer-events: none; z-index: 0;
+        background: radial-gradient(360px circle at var(--mx, 50%) var(--my, 50%), rgba(255,166,102,0.13), transparent 60%);
+      }
+      .req-card-anim:hover .req-glow { opacity: 1; }
+      .req-status-dot {
+        animation: reqStatusPulse 1.8s ease-in-out infinite;
+      }
+    `;
+    document.head.appendChild(style);
+  }, []);
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-5 gap-3">
-        <h2 className="text-xl font-black text-white">Client Quotation Requests</h2>
-        <button onClick={fetchQuotes} className="btn-outline-gold text-xs px-3 py-2 shrink-0">Refresh</button>
+      {/* Page Head */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px', marginBottom: '28px' }}>
+        <div>
+          <h2 style={{ fontFamily: "'Sora', sans-serif", fontSize: '24px', fontWeight: 800, letterSpacing: '-0.01em', color: '#f5f1ea', marginBottom: '4px' }}>
+            Client Quotation Requests
+          </h2>
+          <p style={{ fontSize: '13px', color: '#a89e8f' }}>Manage and generate quotations for incoming client requests.</p>
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          style={{
+            padding: '11px 22px', borderRadius: '999px', fontWeight: 700, fontSize: '13.5px',
+            background: 'transparent', border: '1.5px solid #e0b23d', color: '#e0b23d',
+            display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+            transition: 'all 0.3s', opacity: refreshing ? 0.6 : 1,
+          }}
+          onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 0 22px rgba(224,178,61,0.35)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+          onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
+          <span style={{ display: 'inline-block', transition: 'transform 0.5s', transform: refreshing ? 'rotate(360deg)' : 'rotate(0)' }}>⟳</span>
+          {refreshing ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
       {loading ? (
-        <div className="space-y-3">
-          {[1,2,3].map(i => <div key={i} className="glass-card h-20 rounded-2xl animate-pulse border border-white/5" />)}
-        </div>
-      ) : quotes.length === 0 ? (
-        <div className="glass-card p-10 text-center rounded-3xl border border-white/5">
-          <FileText className="w-10 h-10 text-gray-600 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-white mb-1">No Requests Yet</h3>
-          <p className="text-gray-400 text-sm">Client quotation requests will appear here.</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {quotes.map(q => (
-            <div key={q.id} className="glass-card p-4 rounded-2xl border border-white/5">
-              {/* Client name + ref */}
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <h3 className="font-bold text-white text-sm">{q.clientDetails?.name || 'Unknown'}</h3>
-                  <span className="text-xs text-gray-500">Ref: {q.refNo} · {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}</span>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="text-base font-black gold-text">₹{Number(q.total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</div>
-                  {q.source === 'admin' && <span className="text-xs text-purple-400">Admin</span>}
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="text-xs text-gray-400 space-y-0.5 mb-2">
-                {q.clientDetails?.phone && <p>📞 {q.clientDetails.phone}</p>}
-                {q.clientDetails?.address && <p>📍 {q.clientDetails.address}</p>}
-              </div>
-
-              {/* Items */}
-              {q.items && q.items.length > 0 && (
-                <div className="flex flex-wrap gap-1 mb-3">
-                  {q.items.map((item, i) => (
-                    <span key={i} className="text-xs bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded-full">{item.description} ×{item.quantity}</span>
-                  ))}
-                </div>
-              )}
-
-              {/* Payment status */}
-              <div className="flex flex-col gap-1.5 mb-3">
-                {q.quotationFeePaid && (
-                  <div className="flex items-center gap-2 text-blue-400 font-bold text-xs bg-blue-500/10 border border-blue-500/20 p-2 rounded-lg">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    Quotation Generated (₹20 Paid)
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} className="glass-card" style={{
+              height: '180px', borderRadius: '22px', border: '1px solid rgba(255,255,255,0.05)',
+              animation: 'reqCardIn 0.4s ease both', animationDelay: `${i * 0.08}s`,
+              background: 'rgba(255,255,255,0.03)',
+            }}>
+              <div style={{ padding: '26px 28px' }}>
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '14px', background: 'rgba(255,255,255,0.05)' }} className="animate-pulse" />
+                  <div>
+                    <div style={{ width: '120px', height: '14px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', marginBottom: '6px' }} className="animate-pulse" />
+                    <div style={{ width: '80px', height: '10px', background: 'rgba(255,255,255,0.04)', borderRadius: '4px' }} className="animate-pulse" />
                   </div>
-                )}
-                {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received' || q.paymentStatus === 'Token Paid') && (
-                  <>
-                    <div className="flex items-center gap-2 text-green-400 font-bold text-xs bg-green-500/10 border border-green-500/20 p-2 rounded-lg">
-                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                      {q.paymentStatus === 'Full Payment Received' ? 'Full Payment' : 'Amount Paid'}: ₹{(q.advanceAmount || 0).toLocaleString()}
-                    </div>
-                    {(q.amountLeft > 0 || (q.paymentStatus !== 'Full Payment Received' && q.total - (q.advanceAmount || 0) > 0)) && (
-                      <div className="flex items-center gap-2 text-orange-400 font-bold text-xs bg-orange-500/10 border border-orange-500/20 p-2 rounded-lg">
-                        <span className="w-3.5 h-3.5 flex items-center justify-center shrink-0 text-xs">⚠️</span>
-                        Amount Left: ₹{(q.amountLeft || (q.total - (q.advanceAmount || 0))).toLocaleString()}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 flex-wrap">
-                {(q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received' || q.paymentStatus === 'Token Paid') && (
-                  <button onClick={() => handleDownloadReceipt(q)} className="flex items-center gap-1 px-3 py-1.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-lg text-xs">
-                    <Download className="w-3 h-3" /> Receipt
-                  </button>
-                )}
-                <button onClick={() => handleDownload(q)} className="flex items-center gap-1 px-3 py-1.5 btn-gold text-xs">
-                  <Download className="w-3 h-3" /> PDF
-                </button>
-                <button onClick={() => handleDelete(q.id)} disabled={deletingId === q.id}
-                  className="flex items-center gap-1 px-3 py-1.5 text-xs text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/10 disabled:opacity-50">
-                  <Trash2 className="w-3 h-3" /> Delete
-                </button>
+                </div>
               </div>
             </div>
           ))}
+        </div>
+      ) : quotes.length === 0 ? (
+        <div style={{
+          padding: '60px 20px', textAlign: 'center', borderRadius: '22px',
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+          backdropFilter: 'blur(18px)',
+        }}>
+          <FileText style={{ width: '48px', height: '48px', color: '#6f665a', margin: '0 auto 16px' }} />
+          <h3 style={{ fontFamily: "'Sora', sans-serif", fontSize: '18px', fontWeight: 700, color: '#f5f1ea', marginBottom: '6px' }}>No Requests Yet</h3>
+          <p style={{ fontSize: '14px', color: '#a89e8f' }}>Client quotation requests will appear here.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {quotes.map((q, idx) => {
+            const status = getStatusConfig(q);
+            const hasAdvance = q.paymentStatus === 'Advance Received' || q.paymentStatus === 'Full Payment Received' || q.paymentStatus === 'Token Paid';
+            const amountLeft = q.amountLeft || (q.total - (q.advanceAmount || 0));
+
+            return (
+              <div
+                key={q.id}
+                ref={el => { cardRefs.current[q.id] = el; }}
+                className="req-card-anim"
+                onMouseMove={e => handleMouseMove(e, q.id)}
+                onMouseLeave={() => handleMouseLeave(q.id)}
+                style={{
+                  position: 'relative', padding: '26px 28px', borderRadius: '22px', overflow: 'hidden',
+                  background: 'rgba(255,255,255,0.045)', border: '1px solid rgba(255,255,255,0.09)',
+                  backdropFilter: 'blur(18px)',
+                  boxShadow: '0 14px 36px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06)',
+                  animationDelay: `${idx * 0.06}s`,
+                }}
+              >
+                {/* Radial glow on hover */}
+                <div className="req-glow" />
+
+                {/* Top: Avatar + Name + Amount */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '16px', position: 'relative', zIndex: 1, marginBottom: '14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <div style={{
+                      width: '44px', height: '44px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontWeight: 800, fontSize: '16px', fontFamily: "'Sora', sans-serif", color: '#1a0f08', flexShrink: 0,
+                      background: 'linear-gradient(135deg, #ffb066, #ff7a3d)',
+                      boxShadow: '0 6px 16px rgba(255,122,61,0.35), inset 0 1px 0 rgba(255,255,255,0.4)',
+                    }}>
+                      {getInitials(q.clientDetails?.name)}
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '16.5px', fontWeight: 700, fontFamily: "'Sora', sans-serif", textTransform: 'capitalize', color: '#f5f1ea' }}>
+                        {q.clientDetails?.name || 'Unknown'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6f665a', marginTop: '2px' }}>
+                        Ref: {q.refNo || '—'} · {q.createdAt ? new Date(q.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
+                        {q.source === 'admin' && <span style={{ marginLeft: '8px', color: '#c084fc', fontWeight: 700 }}>ADMIN</span>}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{
+                    fontFamily: "'Sora', sans-serif", fontWeight: 800, fontSize: '21px',
+                    background: 'linear-gradient(120deg, #ffb066, #ff7a3d)',
+                    WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent',
+                    flexShrink: 0,
+                  }}>
+                    ₹{Number(q.total || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px', position: 'relative', zIndex: 1 }}>
+                  {q.clientDetails?.phone && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', color: '#a89e8f' }}>
+                      <span style={{ fontSize: '13px' }}>📞</span>{q.clientDetails.phone}
+                    </div>
+                  )}
+                  {q.clientDetails?.address && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '13.5px', color: '#a89e8f' }}>
+                      <span style={{ fontSize: '13px' }}>📍</span>{q.clientDetails.address}
+                    </div>
+                  )}
+                </div>
+
+                {/* Item Chips */}
+                {q.items && q.items.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '16px', position: 'relative', zIndex: 1 }}>
+                    {q.items.map((item, i) => (
+                      <span key={i} style={{
+                        fontSize: '11.8px', fontWeight: 600, padding: '6px 13px', borderRadius: '999px',
+                        background: 'rgba(224,178,61,0.1)', border: '1px solid rgba(224,178,61,0.28)', color: '#e0b23d',
+                      }}>
+                        {item.description} ×{item.quantity}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Status Bar */}
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '10px', padding: '13px 18px', borderRadius: '14px', marginBottom: '12px',
+                  position: 'relative', zIndex: 1,
+                  background: status.bg, border: `1px solid ${status.border}`, color: status.color,
+                  fontSize: '13.5px', fontWeight: 700,
+                }}>
+                  <span className="req-status-dot" style={{
+                    width: '8px', height: '8px', borderRadius: '50%', flexShrink: 0,
+                    background: status.dotColor, boxShadow: `0 0 10px ${status.dotColor}`,
+                  }} />
+                  {status.icon} {status.text}
+                </div>
+
+                {/* Amount Left Warning */}
+                {hasAdvance && q.paymentStatus !== 'Full Payment Received' && amountLeft > 0 && (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '10px', padding: '11px 16px', borderRadius: '12px', marginBottom: '14px',
+                    position: 'relative', zIndex: 1,
+                    background: 'linear-gradient(135deg, rgba(255,150,50,0.12), rgba(255,150,50,0.03))',
+                    border: '1px solid rgba(255,150,50,0.25)', color: '#ffb066', fontSize: '13px', fontWeight: 700,
+                  }}>
+                    <span>⚠️</span> Amount Left: ₹{amountLeft.toLocaleString()}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+                  <button
+                    onClick={() => handleDownload(q)}
+                    style={{
+                      padding: '11px 24px', borderRadius: '999px', border: 'none', fontWeight: 800, fontSize: '13.5px', cursor: 'pointer',
+                      background: 'linear-gradient(135deg, #f0cf6e, #e0b23d)', color: '#1a1204',
+                      boxShadow: '0 8px 22px rgba(224,178,61,0.35), inset 0 1px 0 rgba(255,255,255,0.4)',
+                      display: 'flex', alignItems: 'center', gap: '7px', transition: 'all 0.25s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 30px rgba(224,178,61,0.48)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 8px 22px rgba(224,178,61,0.35)'; }}
+                  >
+                    <Download className="w-3.5 h-3.5" /> Quotation PDF
+                  </button>
+
+                  {hasAdvance && (
+                    <button
+                      onClick={() => handleDownloadReceipt(q)}
+                      style={{
+                        padding: '11px 22px', borderRadius: '999px', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer',
+                        background: 'rgba(23,192,129,0.1)', border: '1px solid rgba(23,192,129,0.35)', color: '#4ade80',
+                        display: 'flex', alignItems: 'center', gap: '7px', transition: 'all 0.25s',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 22px rgba(23,192,129,0.25)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    >
+                      <Download className="w-3.5 h-3.5" /> Receipt
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => handleDelete(q.id)}
+                    disabled={deletingId === q.id}
+                    style={{
+                      padding: '11px 22px', borderRadius: '999px', fontWeight: 700, fontSize: '13.5px', cursor: 'pointer',
+                      background: 'rgba(255,77,77,0.08)', border: '1px solid rgba(255,77,77,0.3)', color: '#ff8080',
+                      display: 'flex', alignItems: 'center', gap: '7px', transition: 'all 0.25s',
+                      opacity: deletingId === q.id ? 0.5 : 1,
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,77,77,0.18)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 22px rgba(255,77,77,0.25)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,77,77,0.08)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
