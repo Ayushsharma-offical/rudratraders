@@ -479,13 +479,144 @@ const AdminQuotation = () => {
   const [client, setClient] = useState({ name: '', careOf: '', address: '', pincode: '', phone: '', projectType: '' });
   const [generated, setGenerated] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [toast, setToast] = useState(false);
+
+  useEffect(() => {
+    if (document.getElementById('quotation-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'quotation-styles';
+    style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=JetBrains+Mono:wght@400;500;600;700&family=Alex+Brush&display=swap');
+
+      .q-root {
+        --glass: rgba(255,255,255,0.045);
+        --glass-border: rgba(255,255,255,0.09);
+        --amber: #ff7a3d;
+        --amber-2: #ffb066;
+        --gold: #e0b23d;
+        --red: #ff4d4d;
+        --emerald: #17c081;
+        --text: #f5f1ea;
+        --text-dim: #a89e8f;
+        --text-faint: #6f665a;
+        font-family: 'Inter', sans-serif;
+        color: var(--text);
+      }
+      .q-page-head { display:flex; align-items:center; gap:12px; margin-bottom:10px; animation: riseIn .6s ease both; }
+      .q-page-head .ph-icon { width:44px;height:44px;border-radius:13px; display:flex;align-items:center;justify-content:center;font-size:19px; background:linear-gradient(135deg, rgba(255,122,61,0.25), rgba(255,122,61,0.05)); border:1px solid rgba(255,122,61,0.3); }
+      .q-page-head h1 { font-family:'Alex Brush', cursive; font-size:40px; font-weight:400; letter-spacing:0.01em; background:linear-gradient(90deg, var(--amber-2), var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow: 0 0 30px rgba(255,122,61,0.25); line-height:1.1; margin:0; }
+      .q-page-head p { font-size:13px; color:var(--text-dim); margin-top:4px; }
+      
+      .q-grid { display:grid; grid-template-columns: 1fr 1fr; gap:26px; align-items:start; }
+      @media (max-width:1080px){ .q-grid { grid-template-columns:1fr; } }
+      
+      .q-glass-card { background:var(--glass); border:1px solid var(--glass-border); border-radius:22px; backdrop-filter: blur(18px); box-shadow: 0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06); padding:28px; transition: box-shadow .35s, border-color .35s; animation: riseIn .6s ease both; }
+      .q-glass-card:nth-of-type(1){ animation-delay:.08s; }
+      .q-glass-card:nth-of-type(2){ animation-delay:.16s; }
+      .q-glass-card:hover{ box-shadow: 0 24px 55px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,122,61,0.12), inset 0 1px 0 rgba(255,255,255,0.08); }
+      
+      .q-card-title { font-family:'Sora',sans-serif; font-size:16px; font-weight:700; margin-bottom:20px; display:flex; align-items:center; gap:8px; }
+      .q-card-title::before{ content:''; width:4px; height:18px; border-radius:3px; background:linear-gradient(180deg,var(--amber-2),var(--amber)); }
+      
+      .q-field { margin-bottom:18px; position:relative; }
+      .q-field label { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px; }
+      .q-field label .req { color:var(--amber); }
+      .q-field label .ok { width:13px; height:13px; border-radius:50%; background:var(--emerald); color:#06251a; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:900; opacity:0; transform:scale(0.4); transition: all .3s cubic-bezier(.34,1.56,.64,1); }
+      .q-field.filled label .ok { opacity:1; transform:scale(1); }
+      
+      .q-field input, .q-field textarea { width:100%; padding:13px 16px; border-radius:13px; font-size:14px; font-family:'Inter',sans-serif; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); color:var(--text); outline:none; transition: border-color .25s, box-shadow .25s, background .25s; }
+      .q-field input::placeholder, .q-field textarea::placeholder { color:var(--text-faint); }
+      .q-field input:focus, .q-field textarea:focus { border-color:rgba(255,122,61,0.55); background:rgba(255,122,61,0.05); box-shadow: 0 0 0 4px rgba(255,122,61,0.12), 0 0 26px rgba(255,122,61,0.18); }
+      .q-field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+      @media (max-width:860px){ .q-field-row { grid-template-columns:1fr; } }
+      
+      .q-items-list { display:flex; flex-direction:column; gap:14px; margin-bottom:18px; }
+      .q-item-block { padding:18px; border-radius:16px; background:rgba(255,255,255,0.025); border:1px solid var(--glass-border); position:relative; transition: border-color .3s, box-shadow .3s, transform .3s; animation: itemIn .35s ease; }
+      @keyframes itemIn{ from{ opacity:0; transform:translateY(-8px) scale(0.98);} to{opacity:1; transform:translateY(0) scale(1);} }
+      .q-item-block:hover { border-color:rgba(255,122,61,0.25); box-shadow:0 10px 26px rgba(0,0,0,0.3); }
+      
+      .q-item-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+      .q-item-label { font-size:12px; font-weight:800; color:var(--amber-2); letter-spacing:0.03em; }
+      .q-item-remove { width:24px;height:24px; border-radius:8px; border:1px solid rgba(255,77,77,0.3); background:rgba(255,77,77,0.08); color:#ff8080; font-size:13px; display:flex; align-items:center; justify-content:center; transition: all .2s; cursor:pointer; }
+      .q-item-remove:hover { background:rgba(255,77,77,0.2); transform:scale(1.08) rotate(90deg); }
+      
+      .q-item-desc { margin-bottom:10px; }
+      .q-item-nums { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+      @media (max-width:860px){ .q-item-nums { grid-template-columns:1fr; } }
+      
+      .q-item-nums input, .q-item-desc input { width:100%; padding:11px 14px; border-radius:11px; font-size:13.5px; background:rgba(255,255,255,0.03); border:1px solid var(--glass-border); color:var(--text); outline:none; transition: border-color .25s, box-shadow .25s, background .25s; }
+      .q-item-nums input:focus, .q-item-desc input:focus { border-color:rgba(255,122,61,0.5); background:rgba(255,122,61,0.04); box-shadow: 0 0 0 3px rgba(255,122,61,0.1); }
+      
+      .q-item-line-total { margin-top:10px; text-align:right; font-size:12.5px; color:var(--text-dim); font-family:'JetBrains Mono',monospace; }
+      .q-item-line-total b { color:var(--amber-2); font-family:'JetBrains Mono',monospace; }
+      
+      .q-add-btn { width:100%; padding:14px; border-radius:14px; font-weight:700; font-size:14px; background:transparent; border:1.5px solid var(--gold); color:var(--gold); display:flex; align-items:center; justify-content:center; gap:8px; transition: all .3s; position:relative; overflow:hidden; cursor:pointer; }
+      .q-add-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg, rgba(224,178,61,0.15), rgba(224,178,61,0.02)); opacity:0; transition:opacity .3s; }
+      .q-add-btn:hover { box-shadow: 0 0 24px rgba(224,178,61,0.35); transform:translateY(-2px); }
+      .q-add-btn:hover::before { opacity:1; }
+      
+      .q-summary-card { margin-top:18px; padding:20px 22px; border-radius:16px; background:rgba(255,255,255,0.025); border:1px solid var(--glass-border); }
+      .q-sum-row { display:flex; justify-content:space-between; font-size:14px; color:var(--text-dim); padding:7px 0; font-family:'JetBrains Mono',monospace; }
+      .q-sum-row.total { border-top:1px solid var(--glass-border); margin-top:8px; padding-top:14px; font-size:16.5px; font-weight:800; color:var(--text); font-family:'Inter',sans-serif; }
+      .q-sum-row.total b { color:var(--amber-2); font-family:'JetBrains Mono',monospace; font-size:19px; text-shadow: 0 0 20px rgba(255,122,61,0.3); }
+      
+      .q-gen-btn { width:100%; margin-top:20px; padding:17px; border-radius:16px; border:none; font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center; gap:10px; background:linear-gradient(135deg, #f0cf6e, var(--gold)); color:#1a1204; box-shadow:0 12px 30px rgba(224,178,61,0.35), inset 0 1px 0 rgba(255,255,255,0.45); transition: transform .3s, box-shadow .3s; cursor:pointer; }
+      .q-gen-btn:hover { transform:translateY(-3px); box-shadow:0 20px 44px rgba(224,178,61,0.5); }
+      .q-gen-btn:active { transform:translateY(-1px) scale(0.98); }
+      .q-gen-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+      .q-gen-btn.pulse-ready { animation: readyPulse 2s ease-in-out infinite; }
+      @keyframes readyPulse{ 0%,100%{ box-shadow:0 12px 30px rgba(224,178,61,0.35), inset 0 1px 0 rgba(255,255,255,0.45); } 50%{ box-shadow:0 12px 40px rgba(224,178,61,0.6), 0 0 0 6px rgba(224,178,61,0.1), inset 0 1px 0 rgba(255,255,255,0.45); } }
+      @keyframes riseIn{ from{ opacity:0; transform:translateY(14px);} to{ opacity:1; transform:translateY(0);} }
+      
+      .q-toast { position:fixed; bottom:26px; right:26px; z-index:50; display:flex; align-items:center; gap:12px; background:rgba(15,13,10,0.92); backdrop-filter:blur(16px); border:1px solid rgba(23,192,129,0.35); padding:15px 20px; border-radius:15px; box-shadow:0 20px 45px rgba(0,0,0,0.5), 0 0 30px rgba(23,192,129,0.15); transform:translateY(24px) scale(0.95); opacity:0; pointer-events:none; transition: all .4s cubic-bezier(.34,1.56,.64,1); }
+      .q-toast.show { transform:translateY(0) scale(1); opacity:1; pointer-events:auto; }
+      .q-toast .t-icon { width:30px;height:30px;border-radius:50%; background:linear-gradient(135deg,#5be0b3,var(--emerald)); display:flex; align-items:center; justify-content:center; color:#04160e; font-weight:900; font-size:14px; flex-shrink:0; }
+      .q-toast .t-text b { display:block; font-size:13.5px; font-weight:700; color:var(--text); }
+      .q-toast .t-text span { font-size:11.5px; color:var(--text-dim); }
+    `;
+    document.head.appendChild(style);
+  }, []);
 
   const addItem = () => setItems([...items, { description: '', quantity: 1, rate: '' }]);
   const removeItem = (i) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i, field, val) => { const u = [...items]; u[i][field] = val; setItems(u); };
 
-  const handleGenerate = async () => {
+  const burstConfetti = (x, y) => {
+    const colors = ['#ff7a3d','#ffb066','#e0b23d','#17c081','#5be0b3'];
+    for(let i=0;i<28;i++){
+      const p = document.createElement('div');
+      p.className = 'confetti-piece';
+      const size = 5 + Math.random()*6;
+      p.style.width = size+'px';
+      p.style.height = (size*0.4)+'px';
+      p.style.background = colors[Math.floor(Math.random()*colors.length)];
+      p.style.left = x+'px';
+      p.style.top = y+'px';
+      p.style.position = 'fixed';
+      p.style.zIndex = '45';
+      p.style.pointerEvents = 'none';
+      p.style.borderRadius = '2px';
+      document.body.appendChild(p);
+      const angle = Math.random()*Math.PI*2;
+      const dist = 90 + Math.random()*160;
+      const dx = Math.cos(angle)*dist;
+      const dy = Math.sin(angle)*dist - 60;
+      const rot = Math.random()*720-360;
+      p.animate([
+        { transform:'translate(0,0) rotate(0deg)', opacity:1 },
+        { transform:`translate(${dx}px, ${dy+220}px) rotate(${rot}deg)`, opacity:0 }
+      ], { duration: 1100 + Math.random()*500, easing:'cubic-bezier(.25,.8,.3,1)' });
+      setTimeout(()=> p.remove(), 1700);
+    }
+  };
+
+  const handleGenerate = async (e) => {
     if (!client.name.trim()) { alert('Please enter client name.'); return; }
+    if (!client.address.trim()) { alert('Please enter client address.'); return; }
+    if (!client.phone.trim()) { alert('Please enter client mobile.'); return; }
+    
+    const btn = e.currentTarget;
+    const rect = btn.getBoundingClientRect();
     setGenerating(true);
     try {
       const refNo = (parseInt(localStorage.getItem('rudra_ref') || '65') + 1).toString();
@@ -499,7 +630,12 @@ const AdminQuotation = () => {
         });
       } catch (e) { console.error(e); }
       setGenerated(true);
-      setTimeout(() => setGenerated(false), 3000);
+      burstConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      setToast(true);
+      setTimeout(() => {
+        setGenerated(false);
+        setToast(false);
+      }, 3600);
     } catch (err) {
       console.error('PDF error:', err);
       alert('Failed to generate PDF.');
@@ -508,70 +644,102 @@ const AdminQuotation = () => {
   };
 
   const total = items.reduce((a, i) => a + (parseFloat(i.rate) || 0) * (parseInt(i.quantity) || 0), 0);
+  const gst = total * 0.18;
+  const grandTotal = total + gst;
 
   return (
-    <div>
-      <h2 className="text-xl font-black text-white mb-5">Generate Client Quotation</h2>
-      {/* Stack single-column on mobile, 2-col on xl */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-        <div className="glass-card p-4 rounded-2xl border border-white/5">
-          <h3 className="font-bold text-white mb-4">Client Details</h3>
-          <div className="space-y-3">
-            {[
-              { label: 'Client Name *', key: 'name', placeholder: 'Full name' },
-              { label: 'S/O or Care Of', key: 'careOf', placeholder: 'Father / Guardian name' },
-              { label: 'Address *', key: 'address', placeholder: 'Full address', textarea: true },
-              { label: 'PIN Code', key: 'pincode', placeholder: 'PIN Code' },
-              { label: 'Mobile *', key: 'phone', placeholder: '10-digit mobile' },
-              { label: 'Project Name', key: 'projectType', placeholder: 'e.g. Bakery Processing Unit' },
-            ].map(f => (
-              <div key={f.key}>
-                <label className="block text-xs text-gray-400 mb-1 font-medium uppercase tracking-wide">{f.label}</label>
-                {f.textarea
-                  ? <textarea className="input-dark resize-none text-sm" rows="2" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })}></textarea>
-                  : <input type="text" className="input-dark text-sm" placeholder={f.placeholder} value={client[f.key]} onChange={e => setClient({ ...client, [f.key]: e.target.value })} />
-                }
-              </div>
-            ))}
-          </div>
+    <div className="q-root">
+      <div className="q-page-head">
+        <div className="ph-icon">📄</div>
+        <div>
+          <h1>Generate Client Quotation</h1>
+          <p>Create a GST-ready quotation and share it instantly.</p>
         </div>
+      </div>
 
-        <div className="glass-card p-4 rounded-2xl border border-white/5">
-          <h3 className="font-bold text-white mb-4">Machinery Items</h3>
-          <div className="space-y-3">
-            {items.map((item, i) => (
-              <div key={i} className="p-3 rounded-xl border border-white/5" style={{ background: 'rgba(255,255,255,0.02)' }}>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-yellow-400 font-bold">Item {i + 1}</span>
-                  {items.length > 1 && <button onClick={() => removeItem(i)} className="text-red-400 hover:text-red-300"><X className="w-3 h-3" /></button>}
-                </div>
-                <input type="text" className="input-dark text-sm mb-2" placeholder="Machine description" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
-                <div className="grid grid-cols-2 gap-2">
-                  <input type="number" className="input-dark text-sm" placeholder="Qty" min="1" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} />
-                  <input type="number" className="input-dark text-sm" placeholder="Rate (₹)" value={item.rate} onChange={e => updateItem(i, 'rate', e.target.value)} />
-                </div>
-              </div>
-            ))}
-            <button onClick={addItem} className="w-full btn-outline-gold text-sm justify-center py-2">
-              <Plus className="w-4 h-4" /> Add Item
-            </button>
+      <div className="q-grid">
+        {/* CLIENT DETAILS */}
+        <div className="q-glass-card">
+          <div className="q-card-title">Client Details</div>
+          <div className={`q-field ${client.name.trim() ? 'filled' : ''}`}>
+            <label>Client Name <span className="req">*</span><span className="ok">✓</span></label>
+            <input type="text" placeholder="Full name" value={client.name} onChange={e => setClient({ ...client, name: e.target.value })} />
           </div>
-
-          <div className="mt-4 p-3 rounded-xl border border-yellow-500/20" style={{ background: 'rgba(212,175,55,0.05)' }}>
-            <div className="flex justify-between text-sm text-gray-400 mb-1"><span>Subtotal</span><span>₹{total.toLocaleString()}</span></div>
-            <div className="flex justify-between text-sm text-gray-400 mb-2"><span>GST @18%</span><span>₹{(total * 0.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span></div>
-            <div className="flex justify-between font-black text-base"><span className="text-white">Grand Total</span><span className="gold-text">₹{(total * 1.18).toLocaleString('en-IN', { maximumFractionDigits: 0 })}</span></div>
+          <div className={`q-field ${client.careOf.trim() ? 'filled' : ''}`}>
+            <label>S/O or Care Of</label>
+            <input type="text" placeholder="Father / Guardian name" value={client.careOf} onChange={e => setClient({ ...client, careOf: e.target.value })} />
           </div>
-
-          <button onClick={handleGenerate} disabled={generating} className="btn-gold w-full justify-center mt-4 disabled:opacity-50">
-            {generating ? 'Generating...' : <><Download className="w-4 h-4" /> Generate & Download PDF</>}
-          </button>
-          {generated && (
-            <div className="mt-3 p-3 bg-green-500/10 border border-green-500/20 rounded-xl flex items-center gap-2 text-green-400 text-sm">
-              <CheckCircle2 className="w-4 h-4" /> Quotation PDF downloaded!
+          <div className={`q-field ${client.address.trim() ? 'filled' : ''}`}>
+            <label>Address <span className="req">*</span><span className="ok">✓</span></label>
+            <textarea rows="3" placeholder="Full address" value={client.address} onChange={e => setClient({ ...client, address: e.target.value })}></textarea>
+          </div>
+          <div className="q-field-row">
+            <div className={`q-field ${client.pincode.trim() ? 'filled' : ''}`}>
+              <label>Pin Code</label>
+              <input type="text" placeholder="PIN Code" value={client.pincode} onChange={e => setClient({ ...client, pincode: e.target.value })} />
             </div>
-          )}
+            <div className={`q-field ${client.phone.trim() ? 'filled' : ''}`}>
+              <label>Mobile <span className="req">*</span><span className="ok">✓</span></label>
+              <input type="tel" placeholder="10-digit mobile" value={client.phone} onChange={e => setClient({ ...client, phone: e.target.value })} />
+            </div>
+          </div>
+          <div className={`q-field ${client.projectType.trim() ? 'filled' : ''}`} style={{ marginBottom: 0 }}>
+            <label>Project Name</label>
+            <input type="text" placeholder="e.g. Bakery Processing Unit" value={client.projectType} onChange={e => setClient({ ...client, projectType: e.target.value })} />
+          </div>
         </div>
+
+        {/* MACHINERY ITEMS */}
+        <div className="q-glass-card">
+          <div className="q-card-title">Machinery Items</div>
+          <div className="q-items-list">
+            {items.map((item, i) => {
+              const qty = parseFloat(item.quantity) || 0;
+              const rate = parseFloat(item.rate) || 0;
+              const lineTotal = qty * rate;
+              return (
+                <div key={i} className="q-item-block">
+                  <div className="q-item-head">
+                    <span className="q-item-label">Item {i + 1}</span>
+                    {items.length > 1 && (
+                      <button className="q-item-remove" onClick={() => removeItem(i)}>✕</button>
+                    )}
+                  </div>
+                  <div className="q-item-desc">
+                    <input type="text" placeholder="Machine description" value={item.description} onChange={e => updateItem(i, 'description', e.target.value)} />
+                  </div>
+                  <div className="q-item-nums">
+                    <input type="number" min="1" className="qty-input" placeholder="Qty" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} />
+                    <input type="number" min="0" className="rate-input" placeholder="Rate (₹)" value={item.rate} onChange={e => updateItem(i, 'rate', e.target.value)} />
+                  </div>
+                  <div className="q-item-line-total">Line total: <b>₹{Math.round(lineTotal).toLocaleString('en-IN')}</b></div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <button className="q-add-btn" onClick={addItem}>+ Add Item</button>
+
+          <div className="q-summary-card">
+            <div className="q-sum-row"><span>Subtotal</span><span>₹{Math.round(total).toLocaleString('en-IN')}</span></div>
+            <div className="q-sum-row"><span>GST @18%</span><span>₹{Math.round(gst).toLocaleString('en-IN')}</span></div>
+            <div className="q-sum-row total"><span>Grand Total</span><b>₹{Math.round(grandTotal).toLocaleString('en-IN')}</b></div>
+          </div>
+
+          <button 
+            className={`q-gen-btn ${grandTotal > 0 ? 'pulse-ready' : ''}`} 
+            onClick={handleGenerate} 
+            disabled={generating}
+            style={generated ? { background: 'linear-gradient(135deg, #5be0b3, #17c081)', color: '#04160e' } : {}}
+          >
+            {generating ? 'Generating...' : generated ? '✓ Quotation Generated!' : 'Generate'}
+          </button>
+        </div>
+      </div>
+
+      <div className={`q-toast ${toast ? 'show' : ''}`}>
+        <div className="t-icon">✓</div>
+        <div className="t-text"><b>Quotation generated</b><span>Ready to print or save as PDF</span></div>
       </div>
     </div>
   );
