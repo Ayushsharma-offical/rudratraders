@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn, CreditCard, X } from 'lucide-react';
+import { Trash2, Download, CheckCircle2, ShoppingCart, ArrowLeft, Plus, Minus, LogIn, CreditCard, X, Loader2 } from 'lucide-react';
 import { getCart, removeFromCart, updateQty, clearCart } from '../data/machinery';
 import { generateQuotation } from '../utils/generateQuotation';
 import { generateAdvanceReceipt } from '../utils/generateAdvanceReceipt';
@@ -11,6 +11,37 @@ import SEO from '../components/SEO';
 
 let refCounter = parseInt(localStorage.getItem('rudra_ref') || '65');
 
+// ─── PAYMENT PERSISTENCE HELPERS ───────────────────────────────────────────
+// These persist payment state to localStorage so we can recover after
+// Android kills the Chrome tab during payment app switch
+const PENDING_KEY = 'rudra_pending_payment';
+
+const savePendingPayment = (data) => {
+  try { localStorage.setItem(PENDING_KEY, JSON.stringify(data)); } catch {}
+};
+const getPendingPayment = () => {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+};
+const clearPendingPayment = () => {
+  try { localStorage.removeItem(PENDING_KEY); } catch {}
+};
+
+// ─── RAZORPAY READINESS CHECK ──────────────────────────────────────────────
+const waitForRazorpay = (timeoutMs = 8000) => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) return resolve(true);
+    const start = Date.now();
+    const interval = setInterval(() => {
+      if (window.Razorpay) { clearInterval(interval); resolve(true); }
+      else if (Date.now() - start > timeoutMs) { clearInterval(interval); resolve(false); }
+    }, 200);
+  });
+};
+
+// ─── MAIN COMPONENT ────────────────────────────────────────────────────────
 const CartPage = () => {
   const navigate = useNavigate();
   const [cart, setCart] = useState([]);
@@ -29,16 +60,22 @@ const CartPage = () => {
   const [pdfDownloaded, setPdfDownloaded] = useState(false);
   const [skipQuotation, setSkipQuotation] = useState(false);
   const [receiptDetails, setReceiptDetails] = useState(null);
+  const [recovering, setRecovering] = useState(false);
+
+  // Track if component is mounted (avoid setState on unmounted)
+  const mountedRef = useRef(true);
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
+
+  // ── Auth + Cart init ──────────────────────────────────────────────────────
   useEffect(() => {
     setCart(getCart());
     const handler = () => setCart(getCart());
     window.addEventListener('cart_updated', handler);
-    
+
     const unsub = auth.onAuthStateChanged(u => {
       if (u) {
         setUser(u);
       } else {
-        // Sign in anonymously in the background so Firebase DB rules still work
         signInAnonymously(auth).catch(console.error);
       }
     });
@@ -47,6 +84,78 @@ const CartPage = () => {
       window.removeEventListener('cart_updated', handler);
       unsub();
     };
+  }, []);
+
+  // ── PAYMENT RECOVERY ON MOUNT ─────────────────────────────────────────────
+  // When user returns from bank app after tab was killed, check pending payment
+  useEffect(() => {
+    const pending = getPendingPayment();
+    if (!pending) return;
+
+    // Only recover if pending payment is < 10 minutes old
+    const age = Date.now() - pending.timestamp;
+    if (age > 600000) {
+      clearPendingPayment();
+      return;
+    }
+
+    setRecovering(true);
+
+    // Poll Razorpay order status from our backend
+    const checkStatus = async () => {
+      try {
+        const res = await fetch(`/api/check-order-status?order_id=${pending.order_id}`);
+        const order = await res.json();
+
+        if (!mountedRef.current) return;
+
+        if (order.status === 'paid') {
+          // Payment was successful while we were away!
+          clearPendingPayment();
+
+          // Restore client details from pending data
+          if (pending.clientDetails) {
+            setClient(pending.clientDetails);
+          }
+          if (pending.quoteId) {
+            setQuoteId(pending.quoteId);
+          }
+
+          // Update Firebase
+          try {
+            if (pending.quoteId) {
+              update(ref(rtdb, `quotes/${pending.quoteId}`), {
+                paymentStatus: pending.paymentType === 'quotation_fee' ? 'Quotation Generated' :
+                  (pending.paymentAmount >= pending.totalAmount ? 'Full Payment Received' : 'Token Paid'),
+                advanceAmount: pending.paymentAmount,
+                totalAmount: pending.totalAmount,
+                amountLeft: Math.max(0, pending.totalAmount - pending.paymentAmount),
+              });
+            }
+          } catch (e) { console.error('Firebase update error:', e); }
+
+          if (pending.paymentType === 'quotation_fee') {
+            setStep(3);
+            setSkipQuotation(false);
+          } else {
+            setPaymentSuccess(true);
+            setReceiptDetails({ paymentAmount: pending.paymentAmount, order_id: pending.order_id });
+            setStep(3);
+          }
+        } else if (order.status === 'attempted' || order.status === 'created') {
+          // Payment not completed — clear and let user retry
+          clearPendingPayment();
+        } else {
+          clearPendingPayment();
+        }
+      } catch (err) {
+        console.error('Recovery check failed:', err);
+        clearPendingPayment();
+      }
+      if (mountedRef.current) setRecovering(false);
+    };
+
+    checkStatus();
   }, []);
 
   const handleRemove = (id) => { removeFromCart(id); setCart(getCart()); };
@@ -74,7 +183,7 @@ const CartPage = () => {
     if (!validate()) return;
     refCounter++;
     localStorage.setItem('rudra_ref', refCounter);
-    
+
     const items = cart.map(i => ({
       description: String(i.name || 'Machinery Item'),
       quantity: Number(i.quantity) || 1,
@@ -90,7 +199,7 @@ const CartPage = () => {
     };
 
     try {
-      const newQuoteRef = await push(ref(rtdb, 'quotes'), {
+      const newQuoteRef = push(ref(rtdb, 'quotes'), {
         userId: user ? user.uid : 'guest',
         clientDetails: safeClient,
         items: items,
@@ -105,25 +214,55 @@ const CartPage = () => {
     } catch (err) {
       console.error('Error saving quote:', err);
     }
-    
+
     setSkipQuotation(true);
     setStep(3);
   };
 
+  // ── QUOTATION FEE PAYMENT (₹20) ──────────────────────────────────────────
   const handleQuotationFeePayment = async () => {
     setPaying(true);
     try {
       refCounter++;
       localStorage.setItem('rudra_ref', refCounter);
-      
+
+      // Check Razorpay is loaded
+      const rzpReady = await waitForRazorpay();
+      if (!rzpReady) {
+        alert('Payment gateway is loading. Please check your internet and try again.');
+        setPaying(false);
+        return;
+      }
+
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: 2000, receipt: refCounter.toString() })
       });
-      
+
       const order = await res.json();
       if (!order || order.error) throw new Error(order.error || 'Failed to create order');
+
+      // Save pending payment BEFORE opening Razorpay (survives tab kill)
+      const safeClient = {
+        name: client.name || 'Client',
+        careOf: client.careOf || '',
+        address: client.address || '',
+        pincode: client.pincode || '',
+        phone: client.phone || '',
+        projectType: client.projectType || 'Machinery Unit',
+      };
+
+      savePendingPayment({
+        order_id: order.order_id,
+        paymentType: 'quotation_fee',
+        paymentAmount: 20,
+        totalAmount: Math.round(total),
+        clientDetails: safeClient,
+        quoteId: null, // will be set after push
+        refNo: refCounter.toString(),
+        timestamp: Date.now(),
+      });
 
       const options = {
         key: 'rzp_live_T6bASddyHt5W3K',
@@ -144,21 +283,16 @@ const CartPage = () => {
               })
             });
             const result = await verifyRes.json();
-            
+
             if (result.success) {
+              // Payment verified — clear pending
+              clearPendingPayment();
+
               const items = cart.map(i => ({
                 description: String(i.name || 'Machinery Item'),
                 quantity: Number(i.quantity) || 1,
                 rate: Number(i.price) || 0
               }));
-              const safeClient = {
-                name: client.name || 'Client',
-                careOf: client.careOf || '',
-                address: client.address || '',
-                pincode: client.pincode || '',
-                phone: client.phone || '',
-                projectType: client.projectType || 'Machinery Unit',
-              };
 
               try {
                 const newQuoteRef = push(ref(rtdb, 'quotes'), {
@@ -173,22 +307,30 @@ const CartPage = () => {
                   paymentStatus: 'Quotation Generated',
                   createdAt: new Date().toISOString()
                 });
-                setQuoteId(newQuoteRef.key);
+                if (mountedRef.current) setQuoteId(newQuoteRef.key);
               } catch (err) {
                 console.error('Error saving quote:', err);
               }
 
-              setShowTerms(false);
-              setStep(3);
-              setPaying(false);
+              if (mountedRef.current) {
+                setShowTerms(false);
+                setStep(3);
+                setPaying(false);
+              }
             } else {
-              alert('Payment Verification Failed!');
-              setPaying(false);
+              clearPendingPayment();
+              if (mountedRef.current) {
+                alert('Payment Verification Failed!');
+                setPaying(false);
+              }
             }
           } catch (err) {
             console.error('Verify error:', err);
-            alert('Verification Error. Please contact support.');
-            setPaying(false);
+            // Don't clear pending here — let recovery handle it
+            if (mountedRef.current) {
+              alert('Verification Error. Please contact support.');
+              setPaying(false);
+            }
           }
         },
         prefill: {
@@ -200,30 +342,40 @@ const CartPage = () => {
         },
         modal: {
           ondismiss: function() {
-            setPaying(false);
-          }
+            clearPendingPayment();
+            if (mountedRef.current) setPaying(false);
+          },
+          escape: true,
+          backdropclose: false,
         }
       };
 
       const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response){
-        alert('Payment Failed: ' + response.error.description);
-        setPaying(false);
+      rzp.on('payment.failed', function (response) {
+        clearPendingPayment();
+        if (mountedRef.current) {
+          alert('Payment Failed: ' + response.error.description);
+          setPaying(false);
+        }
       });
       rzp.open();
 
     } catch (error) {
       console.error('Payment initiation error:', error);
-      alert('Could not start payment: ' + error.message);
-      setPaying(false);
+      clearPendingPayment();
+      if (mountedRef.current) {
+        alert('Could not start payment: ' + error.message);
+        setPaying(false);
+      }
     }
   };
 
+  // ── FULL / TOKEN PAYMENT ──────────────────────────────────────────────────
   const handlePayment = async (isFullPayment = true) => {
     setPaying(true);
     try {
       let paymentAmount = Math.max(1, Math.round(total));
-      
+
       if (!isFullPayment) {
         const parsed = parseInt(customAmountStr, 10);
         if (isNaN(parsed) || parsed < 100) {
@@ -239,15 +391,42 @@ const CartPage = () => {
         paymentAmount = parsed;
       }
 
+      // Check Razorpay is loaded
+      const rzpReady = await waitForRazorpay();
+      if (!rzpReady) {
+        alert('Payment gateway is loading. Please check your internet and try again.');
+        setPaying(false);
+        return;
+      }
+
       // 1. Create order on backend (amount in paise - minimum 100)
       const res = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: paymentAmount * 100, receipt: refCounter.toString() })
       });
-      
+
       const order = await res.json();
       if (!order || order.error) throw new Error(order.error || 'Failed to create order');
+
+      // Save pending payment BEFORE opening Razorpay
+      savePendingPayment({
+        order_id: order.order_id,
+        paymentType: isFullPayment ? 'full' : 'token',
+        paymentAmount: paymentAmount,
+        totalAmount: Math.round(total),
+        clientDetails: {
+          name: client.name || 'Client',
+          careOf: client.careOf || '',
+          address: client.address || '',
+          pincode: client.pincode || '',
+          phone: client.phone || '',
+          projectType: client.projectType || 'Machinery Unit',
+        },
+        quoteId: quoteId,
+        refNo: refCounter.toString(),
+        timestamp: Date.now(),
+      });
 
       // 2. Open Razorpay Modal
       const options = {
@@ -270,18 +449,23 @@ const CartPage = () => {
               })
             });
             const result = await verifyRes.json();
-            
+
             if (result.success) {
-              setPaymentSuccess(true);
-              setReceiptDetails({ paymentAmount, order_id: order.order_id });
-              
-              // Update status in RTDB
+              // Clear pending — payment is done
+              clearPendingPayment();
+
+              if (mountedRef.current) {
+                setPaymentSuccess(true);
+                setReceiptDetails({ paymentAmount, order_id: order.order_id });
+              }
+
+              // Update status in RTDB (fire-and-forget)
               try {
                 if (quoteId) {
                   const statusLabel = paymentAmount >= Math.round(total) ? 'Full Payment Received' : 'Token Paid';
                   update(ref(rtdb, `quotes/${quoteId}`), {
                     paymentStatus: statusLabel,
-                    advanceAmount: paymentAmount, // Keeping field name for backwards compatibility
+                    advanceAmount: paymentAmount,
                     totalAmount: Math.round(total),
                     amountLeft: Math.round(total) - paymentAmount,
                     razorpay_order_id: response.razorpay_order_id,
@@ -289,15 +473,21 @@ const CartPage = () => {
                   });
                 }
               } catch (e) { console.error('Error updating status:', e); }
-              setPaying(false);
+
+              if (mountedRef.current) setPaying(false);
             } else {
-              alert('Payment Verification Failed!');
-              setPaying(false);
+              clearPendingPayment();
+              if (mountedRef.current) {
+                alert('Payment Verification Failed!');
+                setPaying(false);
+              }
             }
           } catch (err) {
             console.error('Verify error:', err);
-            alert('Verification Error. Please contact support.');
-            setPaying(false);
+            if (mountedRef.current) {
+              alert('Verification Error. Please contact support.');
+              setPaying(false);
+            }
           }
         },
         prefill: {
@@ -309,28 +499,47 @@ const CartPage = () => {
         },
         modal: {
           ondismiss: function() {
-            setPaying(false);
-          }
+            clearPendingPayment();
+            if (mountedRef.current) setPaying(false);
+          },
+          escape: true,
+          backdropclose: false,
         }
       };
 
-      console.log('Order ID:', order.order_id);
-      console.log('Amount:', order.amount);
-
       const rzp = new window.Razorpay(options);
-      rzp.on('payment.failed', function (response){
+      rzp.on('payment.failed', function (response) {
+        clearPendingPayment();
         console.error('Payment failed full response:', JSON.stringify(response));
-        alert('Payment Failed: ' + response.error.code + ' - ' + response.error.description);
-        setPaying(false);
+        if (mountedRef.current) {
+          alert('Payment Failed: ' + response.error.code + ' - ' + response.error.description);
+          setPaying(false);
+        }
       });
       rzp.open();
 
     } catch (error) {
       console.error('Payment initiation error:', error);
-      alert('Could not start payment: ' + error.message);
-      setPaying(false);
+      clearPendingPayment();
+      if (mountedRef.current) {
+        alert('Could not start payment: ' + error.message);
+        setPaying(false);
+      }
     }
   };
+
+  // ── RECOVERY SCREEN ───────────────────────────────────────────────────────
+  if (recovering) return (
+    <div className="pt-32 min-h-screen flex items-center justify-center px-6">
+      <div className="glass-card p-8 md:p-12 rounded-3xl text-center max-w-md w-full">
+        <div className="w-16 h-16 mx-auto mb-6 flex items-center justify-center">
+          <Loader2 className="w-10 h-10 text-yellow-400 animate-spin" />
+        </div>
+        <h2 className="text-xl font-bold text-white mb-2">Verifying Payment...</h2>
+        <p className="text-gray-400 text-sm">We detected a pending payment. Checking status with your bank...</p>
+      </div>
+    </div>
+  );
 
   if (step === 3) return (
     <div className="pt-32 min-h-screen flex items-center justify-center px-6">
@@ -340,11 +549,11 @@ const CartPage = () => {
             <CheckCircle2 className="w-10 h-10 text-green-400" />
           </div>
         )}
-        
+
         <h2 className="text-2xl md:text-3xl font-black text-white mb-3">
           {paymentSuccess ? 'Payment Successful!' : (!skipQuotation ? 'Payment Successful!' : 'Complete Your Order')}
         </h2>
-        
+
         {!skipQuotation && <p className="text-gray-400 mb-8">Your ₹20 quotation fee was received successfully.</p>}
 
         {(!pdfDownloaded && !skipQuotation) ? (
@@ -386,11 +595,11 @@ const CartPage = () => {
               <div className="mb-8 p-6 bg-yellow-500/10 border border-yellow-500/30 rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.1)]">
                 <h3 className="text-yellow-400 font-bold mb-2 text-lg">Confirm Your Order Now</h3>
                 <p className="text-sm text-gray-400 mb-4">Pay the full amount or a token amount to lock current prices and prioritize your order processing.</p>
-                
+
                 <button onClick={() => handlePayment(true)} disabled={paying} className="btn-gold w-full justify-center text-base mb-4 shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50">
-                  {paying ? 'Processing...' : <><CreditCard className="w-5 h-5" /> Pay Full (₹{Math.max(1, Math.round(total)).toLocaleString()})</>}
+                  {paying ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : <><CreditCard className="w-5 h-5" /> Pay Full (₹{Math.max(1, Math.round(total)).toLocaleString()})</>}
                 </button>
-                
+
                 <div className="flex items-center gap-4 my-4">
                   <div className="h-px bg-white/10 flex-1"></div>
                   <span className="text-gray-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">OR PAY TOKEN</span>
@@ -400,23 +609,23 @@ const CartPage = () => {
                 <div className="space-y-3">
                   <div className="flex gap-2">
                     <span className="flex items-center justify-center bg-black/40 border border-white/10 rounded-xl px-4 text-gray-400 font-bold">₹</span>
-                    <input 
-                      type="number" 
-                      min="100" 
+                    <input
+                      type="number"
+                      min="100"
                       max={Math.max(1, Math.round(total))}
-                      placeholder="Min. ₹100" 
+                      placeholder="Min. ₹100"
                       value={customAmountStr}
                       onChange={e => setCustomAmountStr(e.target.value)}
-                      className="input-dark flex-1" 
-                      style={{ background: 'rgba(0,0,0,0.3)' }} 
+                      className="input-dark flex-1"
+                      style={{ background: 'rgba(0,0,0,0.3)' }}
                     />
                   </div>
-                  <button 
-                    onClick={() => handlePayment(false)} 
-                    disabled={paying || !customAmountStr || parseInt(customAmountStr) < 100} 
+                  <button
+                    onClick={() => handlePayment(false)}
+                    disabled={paying || !customAmountStr || parseInt(customAmountStr) < 100}
                     className="btn-outline-gold w-full justify-center text-sm sm:text-base disabled:opacity-50"
                   >
-                    {paying ? 'Processing...' : `Pay Token Amount`}
+                    {paying ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing...</> : `Pay Token Amount`}
                   </button>
                 </div>
               </div>
@@ -438,7 +647,7 @@ const CartPage = () => {
 
   return (
     <div className="min-h-screen pb-20 pt-6">
-      <SEO 
+      <SEO
         title="Your Cart & Checkout"
         description="Review your selected items and complete your order with Rudra Traders securely."
         url="/cart"
@@ -493,7 +702,7 @@ const CartPage = () => {
                         <div className="text-yellow-400 font-black text-sm sm:text-base mt-0.5 sm:mt-1">₹{item.price.toLocaleString()}</div>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t border-white/5 sm:border-t-0 pt-3 sm:pt-0">
                       <div className="flex items-center gap-1.5 sm:gap-2">
                         <button
@@ -638,7 +847,7 @@ const CartPage = () => {
       {showTerms && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="glass-card p-6 md:p-8 rounded-3xl max-w-md w-full border border-yellow-500/30 shadow-[0_0_40px_rgba(212,175,55,0.15)] relative">
-            <button onClick={() => setShowTerms(false)} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+            <button onClick={() => { setShowTerms(false); setPaying(false); }} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
               <X className="w-6 h-6" />
             </button>
             <h2 className="text-xl md:text-2xl font-black text-white mb-4 text-center">Terms & Conditions</h2>
@@ -654,12 +863,12 @@ const CartPage = () => {
                 </p>
               </div>
             </div>
-            <button 
-              onClick={handleQuotationFeePayment} 
+            <button
+              onClick={handleQuotationFeePayment}
               disabled={paying}
               className="btn-gold w-full justify-center text-lg shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50"
             >
-              {paying ? 'Processing...' : 'Proceed & Pay ₹20'}
+              {paying ? <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</> : 'Proceed & Pay ₹20'}
             </button>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -52,32 +52,64 @@ const AppShell = () => {
     </>
   );
 };
+
+// ─── INTRO VIDEO (MOBILE-SAFE) ─────────────────────────────────────────────
 const IntroScreen = ({ onComplete }) => {
-  const videoRef = React.useRef(null);
+  const videoRef = useRef(null);
   const isApp = navigator.userAgent.includes('RudraApp');
-  const [showMessage, setShowMessage] = React.useState(!isApp);
+  const [showMessage, setShowMessage] = useState(!isApp);
+  const hasStartedRef = useRef(false);
+  const completedRef = useRef(false);
 
-  const startVideo = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = false;
-      videoRef.current.play().then(() => {
-        setShowMessage(false);
-      }).catch(() => {
-        videoRef.current.muted = true;
-        videoRef.current.play();
-        setShowMessage(false);
+  // Safe complete — prevents double-fire
+  const safeComplete = useCallback(() => {
+    if (completedRef.current) return;
+    completedRef.current = true;
+    onComplete();
+  }, [onComplete]);
+
+  const startVideo = useCallback(() => {
+    if (hasStartedRef.current) return;
+    const vid = videoRef.current;
+    if (!vid) return;
+    hasStartedRef.current = true;
+
+    vid.muted = false;
+    vid.play().then(() => {
+      setShowMessage(false);
+    }).catch(() => {
+      // Autoplay blocked → try muted
+      vid.muted = true;
+      vid.play().then(() => setShowMessage(false)).catch(() => {
+        // Even muted play failed (very low memory) → skip intro
+        safeComplete();
       });
-    }
-  };
+    });
+  }, [safeComplete]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isApp) {
-      // Small delay to ensure video element is fully mounted and ready
-      setTimeout(() => {
-        startVideo();
-      }, 100);
+      setTimeout(() => startVideo(), 100);
     }
-  }, [isApp]);
+  }, [isApp, startVideo]);
+
+  // If the tab goes hidden while intro is playing (user switched app),
+  // immediately mark intro as done so when tab restores it doesn't replay
+  useEffect(() => {
+    const onVisChange = () => {
+      if (document.visibilityState === 'hidden' && !completedRef.current) {
+        safeComplete();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisChange);
+    return () => document.removeEventListener('visibilitychange', onVisChange);
+  }, [safeComplete]);
+
+  // Failsafe: if video hasn't finished in 15 seconds, skip
+  useEffect(() => {
+    const t = setTimeout(() => safeComplete(), 15000);
+    return () => clearTimeout(t);
+  }, [safeComplete]);
 
   return (
     <div
@@ -88,7 +120,9 @@ const IntroScreen = ({ onComplete }) => {
       <video
         ref={videoRef}
         playsInline
-        onEnded={onComplete}
+        preload="auto"
+        onEnded={safeComplete}
+        onError={safeComplete}
         className="w-full h-full object-contain"
       >
         <source src="/intro.mp4" type="video/mp4" />
@@ -104,7 +138,7 @@ const IntroScreen = ({ onComplete }) => {
       )}
 
       <button
-        onClick={onComplete}
+        onClick={(e) => { e.stopPropagation(); safeComplete(); }}
         className="absolute bottom-10 right-10 text-white/50 hover:text-white transition-colors text-sm"
       >
         Skip Intro &rarr;
@@ -112,22 +146,35 @@ const IntroScreen = ({ onComplete }) => {
     </div>
   );
 };
+
+// ─── MAIN APP ──────────────────────────────────────────────────────────────
+const INTRO_STORAGE_KEY = 'rudra_intro_ts';
+const INTRO_COOLDOWN = 3600000; // 1 hour — show intro max once per hour
+
 const App = () => {
   const [showIntro, setShowIntro] = useState(() => {
-    const lastPlayed = localStorage.getItem('intro_played_time');
-    if (lastPlayed) {
-      const timeDiff = Date.now() - parseInt(lastPlayed, 10);
-      if (timeDiff < 7200000) { // Skip if played within the last 2 hours
-        return false;
+    try {
+      // Check if there's a pending payment — NEVER show intro during payment recovery
+      const pendingPayment = localStorage.getItem('rudra_pending_payment');
+      if (pendingPayment) return false;
+
+      const ts = localStorage.getItem(INTRO_STORAGE_KEY);
+      if (ts) {
+        const elapsed = Date.now() - parseInt(ts, 10);
+        if (elapsed < INTRO_COOLDOWN) return false; // already played recently
       }
+      return true;
+    } catch {
+      return false; // localStorage blocked → skip intro
     }
-    return true;
   });
 
-  const handleIntroComplete = () => {
-    localStorage.setItem('intro_played_time', Date.now().toString());
+  const handleIntroComplete = useCallback(() => {
+    try {
+      localStorage.setItem(INTRO_STORAGE_KEY, Date.now().toString());
+    } catch { /* ignore */ }
     setShowIntro(false);
-  };
+  }, []);
 
   return (
     <BrowserRouter>
