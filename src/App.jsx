@@ -114,11 +114,18 @@ const IntroScreen = ({ onComplete }) => {
 };
 const App = () => {
   const [showIntro, setShowIntro] = useState(() => {
-    return !sessionStorage.getItem('intro_played');
+    const lastPlayed = localStorage.getItem('intro_played_time');
+    if (lastPlayed) {
+      const timeDiff = Date.now() - parseInt(lastPlayed, 10);
+      if (timeDiff < 7200000) { // Skip if played within the last 2 hours
+        return false;
+      }
+    }
+    return true;
   });
 
   const handleIntroComplete = () => {
-    sessionStorage.setItem('intro_played', 'true');
+    localStorage.setItem('intro_played_time', Date.now().toString());
     setShowIntro(false);
   };
 
