@@ -120,7 +120,7 @@ const ProductsPage = () => {
       </div>
 
       {/* Category Pills */}
-      <div className="flex overflow-x-auto gap-3 mb-10 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="flex flex-nowrap md:flex-wrap overflow-x-auto md:overflow-x-visible gap-3 mb-10 pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {CATEGORIES.map(cat => (
           <button
             key={cat}
